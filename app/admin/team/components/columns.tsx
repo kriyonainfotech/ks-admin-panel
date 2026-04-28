@@ -83,6 +83,47 @@ export const getTeamColumns = ({ onEdit, onDelete, onView, onResetPassword }: Co
         },
     },
     {
+        accessorKey: "performance.daily",
+        header: "Today Performance",
+        cell: ({ row }) => {
+            const daily = row.original.performance?.daily;
+            if (!daily) return <span className="text-xs text-muted-foreground">-</span>;
+            return (
+                <div className="flex flex-col gap-0.5">
+                    <span className="text-xs font-medium">Tasks {daily.done}/{daily.total}</span>
+                    <span className={`text-[10px] font-bold ${daily.percentage >= 80 ? "text-emerald-600" : daily.percentage >= 50 ? "text-amber-600" : "text-rose-600"}`}>
+                        {daily.percentage}%
+                    </span>
+                </div>
+            );
+        },
+    },
+    {
+        accessorKey: "performance.monthly",
+        header: "Monthly Performance",
+        cell: ({ row }) => {
+            const monthly = row.original.performance?.monthly;
+            if (!monthly) return <span className="text-xs text-muted-foreground">-</span>;
+            return (
+                <div className="flex flex-col gap-0.5">
+                    <span className="text-xs font-medium">{monthly.done}/{monthly.total}</span>
+                    <span className={`text-[10px] font-bold ${monthly.percentage >= 80 ? "text-emerald-600" : monthly.percentage >= 50 ? "text-amber-600" : "text-rose-600"}`}>
+                        {monthly.percentage}%
+                    </span>
+                </div>
+            );
+        },
+    },
+    {
+        accessorKey: "performance.attendance",
+        header: "Attendance (Month)",
+        cell: ({ row }) => {
+            const attendance = row.original.performance?.attendance;
+            if (!attendance) return <span className="text-xs text-muted-foreground">-</span>;
+            return <span className="text-xs font-medium">{attendance.present}/{attendance.totalDays}</span>;
+        },
+    },
+    {
         id: "actions",
         cell: ({ row }) => (
             <DropdownMenu>

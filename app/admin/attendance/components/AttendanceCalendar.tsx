@@ -20,6 +20,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 import { AttendanceLog } from "@/src/types/attendanceTypes";
+import { Badge } from "@/components/ui/badge";
 
 interface AttendanceCalendarProps {
     selectedDate: Date;
@@ -29,6 +30,7 @@ interface AttendanceCalendarProps {
     viewMode: "single" | "range";
     onViewModeChange: (mode: "single" | "range") => void;
     logs: AttendanceLog[];
+    exceptions?: { _id: string, date: string, type: string, description?: string }[];
 }
 
 export function AttendanceCalendar({
@@ -37,7 +39,8 @@ export function AttendanceCalendar({
     dateRange,
     onRangeSelect,
     viewMode,
-    logs
+    logs,
+    exceptions = []
 }: AttendanceCalendarProps) {
     const [currentMonth, setCurrentMonth] = useState(new Date(selectedDate));
 
@@ -134,6 +137,10 @@ export function AttendanceCalendar({
                         const isCurrentMonth = isSameMonth(day, currentMonth);
                         const isSelected = isDateSelected(day);
                         const isToday = isSameDay(day, new Date());
+                        const isSunday = day.getDay() === 0;
+                        const exception = exceptions.find(ex => isSameDay(new Date(ex.date), day));
+                        const isWorkingSunday = isSunday && exception?.type === "Working Sunday";
+                        const isHoliday = exception?.type === "Holiday";
 
                         return (
                             <div
@@ -142,6 +149,9 @@ export function AttendanceCalendar({
                                 className={cn(
                                     "min-h-[50px] sm:min-h-[70px] p-1 sm:p-2 bg-card relative cursor-pointer transition-all hover:bg-primary/5 flex flex-col justify-between group",
                                     !isCurrentMonth && "bg-muted/10 opacity-40",
+                                    isSunday && !isWorkingSunday && !isSelected && "bg-rose-500/[0.03]",
+                                    isHoliday && !isSelected && "bg-rose-500/[0.05]",
+                                    isWorkingSunday && !isSelected && "bg-emerald-500/[0.03]",
                                     isSelected && "bg-primary/[0.03] z-10",
                                     isSelected && viewMode === "range" && dateRange?.from && dateRange?.to &&
                                     isWithinInterval(startOfDay(day), { start: startOfDay(dateRange.from), end: startOfDay(dateRange.to) }) &&
@@ -153,10 +163,12 @@ export function AttendanceCalendar({
                                     <span className={cn(
                                         "text-[10px] sm:text-[11px] font-black rounded-md w-5 h-5 sm:w-6 sm:h-6 flex items-center justify-center transition-all",
                                         isToday ? "bg-primary text-primary-foreground shadow-sm shadow-primary/20" : "text-muted-foreground group-hover:text-primary",
-                                        isSelected && !isToday && "text-primary font-black scale-110"
+                                        isSelected && !isToday && "text-primary font-black scale-110",
+                                        isSunday && !isWorkingSunday && !isToday && !isSelected && "text-rose-400"
                                     )}>
                                         {format(day, "d")}
                                     </span>
+                                    {isHoliday && <Badge variant="outline" className="text-[7px] py-0 px-1 border-rose-200 text-rose-500">Holiday</Badge>}
                                 </div>
 
                                 <div className="flex flex-wrap gap-0.5 sm:gap-1 mt-0.5 sm:mt-1 pb-1">

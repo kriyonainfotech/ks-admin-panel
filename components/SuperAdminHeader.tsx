@@ -29,6 +29,8 @@ export function SuperAdminHeader({ title }: { title?: string }) {
         
         if (!lastSegment || lastSegment === "admin" || lastSegment === "superadmin") return "Dashboard";
         
+        if (lastSegment.toLowerCase() === "sop") return "SOP";
+        
         // Convert kkab-case to Title Case (e.g. tasks-management -> Tasks Management)
         return lastSegment
             .split("-")

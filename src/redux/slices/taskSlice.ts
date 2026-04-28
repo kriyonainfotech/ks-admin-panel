@@ -42,9 +42,9 @@ export const updateTask = createAsyncThunk(
 
 export const updateTaskStatus = createAsyncThunk(
     "tasks/updateStatus",
-    async ({ id, status }: { id: string; status: string }, { rejectWithValue }) => {
+    async ({ id, status, note }: { id: string; status: string; note?: string }, { rejectWithValue }) => {
         try {
-            return await taskAPI.updateTaskStatus(id, status);
+            return await taskAPI.updateTaskStatus(id, status, note);
         } catch (err: any) {
             return rejectWithValue("Failed to update task status");
         }

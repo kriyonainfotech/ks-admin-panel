@@ -38,6 +38,7 @@ export default function TeamTasksPage() {
         if (spec.includes("design") || spec.includes("graphic") || spec.includes("art")) return "design";
         if (spec.includes("video") || spec.includes("edit")) return "video";
         if (spec.includes("marketing") || spec.includes("market")) return "marketing";
+        if (spec.includes("web") || spec.includes("dev") || spec.includes("software")) return "web";
         return "default";
     }, [user]);
 

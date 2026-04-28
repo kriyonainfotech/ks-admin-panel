@@ -42,7 +42,7 @@ export function SopRulesView({ title, category, entityType, entityId, teamCatego
     };
 
     return (
-        <div className="flex flex-col gap-6 max-w-full mx-auto p-4 md:p-6">
+        <div className="flex flex-col gap-6 w-full max-w-full p-4 md:p-6">
             <div className="flex flex-col gap-2">
                 <div className="flex items-center gap-2 mb-1">
                     {category === "sop" ? (
@@ -115,7 +115,7 @@ export function SopRulesView({ title, category, entityType, entityId, teamCatego
                                                 {points.map((point) => (
                                                     <li key={point._id} className="flex gap-3 group/item">
                                                         <div className="size-1.5 rounded-full bg-primary/40 mt-1.5 shrink-0 group-hover/item:bg-primary transition-colors" />
-                                                        <p className="text-sm text-slate-600 leading-relaxed font-medium">
+                                                        <p className="text-sm text-slate-600 leading-relaxed font-medium whitespace-pre-wrap min-w-0 flex-1">
                                                             {point.content}
                                                         </p>
                                                     </li>

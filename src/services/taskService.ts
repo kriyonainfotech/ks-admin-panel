@@ -57,8 +57,8 @@ export const taskAPI = {
     },
 
     // Update Status Only (Keeping separate as requested)
-    updateTaskStatus: async (id: string, status: string): Promise<Task> => {
-        const response = await axiosInstance.put(`/api/tasks/update-status/${id}`, { status });
+    updateTaskStatus: async (id: string, status: string, note?: string): Promise<Task> => {
+        const response = await axiosInstance.put(`/api/tasks/update-status/${id}`, { status, note });
         return response.data.data;
     },
 

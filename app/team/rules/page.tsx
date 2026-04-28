@@ -8,6 +8,7 @@ export default function TeamRulesPage() {
     const { user } = useAuth();
 
     const teamCategory = useMemo(() => {
+        if (user?.role === "Admin") return "admin";
         const spec = (user?.profile?.specialization || user?.specialization || "").toLowerCase().trim();
         if (spec.includes("design") || spec.includes("graphic") || spec.includes("art")) return "design";
         if (spec.includes("video") || spec.includes("edit")) return "video";

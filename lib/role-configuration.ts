@@ -6,11 +6,11 @@ export interface DashboardTab {
     filterStatus: string[];
     filterCategory?: string;
     showPostingDate?: boolean;
-    excludeTasksWithPostingDate?: boolean; // Marketing Ads: strictly exclude tasks that have a postingDate
+    excludeTasksWithPostingDate?: boolean;
 }
 
 export interface RoleConfig {
-    label: string; // Human readable role name
+    label: string;
     dashboard: {
         tabs: DashboardTab[];
     };
@@ -101,6 +101,34 @@ export const ROLE_CONFIG: { [key: string]: RoleConfig } = {
             postingDateLabel: "Report Sharing Date (Optional)"
         }
     },
+    web: {
+        label: "Web Developer",
+        dashboard: {
+            tabs: [
+                {
+                    id: 'development',
+                    label: 'Development',
+                    statuses: ['Developing', 'Review', 'Bug Fix', 'Approved'],
+                    filterStatus: ['Developing', 'Review', 'Bug Fix', 'Approved', 'Pending'],
+                    showPostingDate: false
+                },
+                {
+                    id: 'deployment',
+                    label: 'Live/Deployment',
+                    statuses: ['Staging', 'Done'],
+                    filterStatus: ['Staging', 'Done'],
+                    showPostingDate: true
+                }
+            ]
+        },
+        form: {
+            dueDateLabel: "Development Date",
+            showPostingDate: true,
+            postingDateLabel: "Scheduled Deployment Date"
+        }
+    },
+
+
     // Default fallback
     default: {
         label: "Team Member",

@@ -8,7 +8,7 @@ import { attendanceService } from "@/src/services/attendanceService";
 import { AttendanceLog } from "@/src/types/attendanceTypes";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { RefreshCw, Check, X, Clock, Calendar as CalendarIcon, User as UserIcon, Filter, Search, ChevronDown, UserCircle2 } from "lucide-react";
+import { RefreshCw, Check, X, Clock, Calendar as CalendarIcon, Trash2, User as UserIcon, Filter, Search, ChevronDown, UserCircle2 } from "lucide-react";
 import { format, isSameDay, startOfDay } from "date-fns";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
@@ -44,6 +44,7 @@ export default function AttendancePage() {
     const [viewMode, setViewMode] = useState<"single" | "range">("single");
     const [selectedDate, setSelectedDate] = useState<Date>(new Date());
     const [dateRange, setDateRange] = useState<{ from: Date; to?: Date } | null>(null);
+    const [calendarExceptions, setCalendarExceptions] = useState<{ _id: string, date: string, type: string, description?: string }[]>([]);
 
     // Confirmation Dialog State
     const [isConfirmOpen, setIsConfirmOpen] = useState(false);
@@ -51,6 +52,7 @@ export default function AttendancePage() {
 
     useEffect(() => {
         dispatch(fetchTeam());
+        fetchExceptions();
         refreshData();
     }, [dispatch]);
 
@@ -80,14 +82,68 @@ export default function AttendancePage() {
         }
     };
 
+    const fetchExceptions = async () => {
+        try {
+            const data = await attendanceService.getCalendarExceptionsAPI();
+            if (data.success) {
+                setCalendarExceptions(data.data);
+            }
+        } catch (error) {
+            console.error("Failed to fetch exceptions", error);
+        }
+    };
+
     const refreshData = async () => {
         fetchLogs();
         fetchMissingDates();
+        fetchExceptions();
     };
 
     const handleMarkAttendance = (userId: string, userName: string, status: "Full Day" | "Half Day" | "Leave", date: Date, userModel: string) => {
         setPendingAction({ userId, userName, status, date, userModel });
         setIsConfirmOpen(true);
+    };
+
+    const handleMarkAsWorkingSunday = async (date: Date) => {
+        try {
+            const res = await attendanceService.addCalendarExceptionAPI({
+                date,
+                type: "Working Sunday",
+                description: "Manual override by Admin"
+            });
+            if (res.success) {
+                toast.success("Date set as Working Sunday!");
+                fetchExceptions();
+                refreshData();
+            }
+        } catch (error: any) {
+            toast.error(error.response?.data?.message || "Failed to add exception");
+        }
+    };
+
+    const handleDeleteException = async (id: string) => {
+        try {
+            const res = await attendanceService.deleteCalendarExceptionAPI(id);
+            if (res.success) {
+                toast.success("Exception removed");
+                fetchExceptions();
+            }
+        } catch (error) {
+            toast.error("Failed to remove exception");
+        }
+    };
+
+    const isWorkingDay = (date: Date) => {
+        const day = date.getDay();
+        const exception = calendarExceptions.find(ex => isSameDay(new Date(ex.date), date));
+
+        if (day === 0) { // Sunday
+            return exception?.type === "Working Sunday";
+        }
+
+        // Non-Sunday
+        if (exception?.type === "Holiday") return false;
+        return true;
     };
 
     const confirmMarkAttendance = async () => {
@@ -160,8 +216,9 @@ export default function AttendancePage() {
     }, [logs, selectedUserFilter, viewMode, selectedDate, dateRange, activeTab, user]);
 
     const pendingMembers = useMemo(() => {
+        if (!isWorkingDay(selectedDate)) return [];
         return members.filter(m => !logs.some(l => l.user._id === m._id && isSameDay(new Date(l.date), selectedDate)));
-    }, [members, logs, selectedDate]);
+    }, [members, logs, selectedDate, calendarExceptions]);
 
     return (
         <div className="flex flex-col h-full bg-background space-y-6">
@@ -274,77 +331,98 @@ export default function AttendancePage() {
                 viewMode={viewMode}
                 onViewModeChange={setViewMode}
                 logs={logs}
+                exceptions={calendarExceptions}
             />
 
             {/* Bottom Row: Logs & Team Actions */}
             <div className="space-y-8">
                 {/* Team Quick Attendance (Unmarked Members) */}
-                {activeTab === "team" && viewMode === "single" && !isLoading && pendingMembers.length > 0 && (
-                    <div className="space-y-4 animate-in fade-in slide-in-from-top-2 duration-500">
-                        <div className="flex items-center justify-between">
-                            <div className="flex items-center gap-2">
-                                <div className="p-1.5 bg-amber-500/10 rounded-md">
-                                    <UserCircle2 size={18} className="text-amber-600" />
-                                </div>
-                                <h3 className="text-sm font-bold tracking-tight">Pending Attendance</h3>
-                                <Badge variant="secondary" className="ml-2 bg-amber-500/10 text-amber-600 border-amber-500/20 text-[10px] font-black">
-                                    {pendingMembers.length} MISSING
-                                </Badge>
+                {activeTab === "team" && viewMode === "single" && !isLoading && (
+                    !isWorkingDay(selectedDate) ? (
+                        <div className="flex flex-col items-center justify-center p-12 bg-card rounded-xl border-2 border-dashed border-border/60 text-center animate-in fade-in duration-500">
+                            <div className="h-16 w-16 rounded-full bg-muted flex items-center justify-center text-muted-foreground mb-4">
+                                <Clock className="h-8 w-8" />
                             </div>
-                            <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={markAllPresent}
-                                className="h-8 text-[10px] font-black uppercase text-emerald-600 border-emerald-200 hover:bg-emerald-50 bg-emerald-50/30"
-                            >
-                                <Check size={14} className="mr-1.5" /> Mark All Present
-                            </Button>
+                            <h3 className="text-lg font-bold text-foreground">Non-Working Day</h3>
+                            <p className="text-muted-foreground text-sm max-w-xs mt-1">Offices are closed on Sundays and Public Holidays.</p>
+                            {selectedDate.getDay() === 0 && (
+                                <Button
+                                    variant="outline"
+                                    size="sm"
+                                    className="mt-6 font-bold border-primary/20 hover:bg-primary/5 text-primary"
+                                    onClick={() => handleMarkAsWorkingSunday(selectedDate)}
+                                >
+                                    Mark as Working Sunday
+                                </Button>
+                            )}
                         </div>
+                    ) : pendingMembers.length > 0 && (
+                        <div className="space-y-4 animate-in fade-in slide-in-from-top-2 duration-500">
+                            <div className="flex items-center justify-between">
+                                <div className="flex items-center gap-2">
+                                    <div className="p-1.5 bg-amber-500/10 rounded-md">
+                                        <UserCircle2 size={18} className="text-amber-600" />
+                                    </div>
+                                    <h3 className="text-sm font-bold tracking-tight">Pending Attendance</h3>
+                                    <Badge variant="secondary" className="ml-2 bg-amber-500/10 text-amber-600 border-amber-500/20 text-[10px] font-black">
+                                        {pendingMembers.length} MISSING
+                                    </Badge>
+                                </div>
+                                <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={markAllPresent}
+                                    className="h-8 text-[10px] font-black uppercase text-emerald-600 border-emerald-200 hover:bg-emerald-50 bg-emerald-50/30"
+                                >
+                                    <Check size={14} className="mr-1.5" /> Mark All Present
+                                </Button>
+                            </div>
 
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-                            {pendingMembers.map(m => (
-                                <div key={m._id} className="p-4 rounded-xl border bg-card shadow-sm hover:shadow-md transition-all border-l-4 border-l-amber-500 group">
-                                    <div className="flex justify-between items-start mb-4">
-                                        <div className="flex items-center gap-3">
-                                            <div className="h-10 w-10 rounded-lg bg-primary/5 flex items-center justify-center text-primary font-bold text-xs border border-primary/10">
-                                                {m.name.charAt(0)}
-                                            </div>
-                                            <div className="flex flex-col min-w-0">
-                                                <span className="text-sm font-bold text-foreground truncate">{m.name}</span>
-                                                <span className="text-[10px] text-muted-foreground font-medium uppercase tracking-tighter truncate">{m.role}</span>
+                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                                {pendingMembers.map(m => (
+                                    <div key={m._id} className="p-4 rounded-xl border bg-card shadow-sm hover:shadow-md transition-all border-l-4 border-l-amber-500 group">
+                                        <div className="flex justify-between items-start mb-4">
+                                            <div className="flex items-center gap-3">
+                                                <div className="h-10 w-10 rounded-lg bg-primary/5 flex items-center justify-center text-primary font-bold text-xs border border-primary/10">
+                                                    {m.name.charAt(0)}
+                                                </div>
+                                                <div className="flex flex-col min-w-0">
+                                                    <span className="text-sm font-bold text-foreground truncate">{m.name}</span>
+                                                    <span className="text-[10px] text-muted-foreground font-medium uppercase tracking-tighter truncate">{m.role}</span>
+                                                </div>
                                             </div>
                                         </div>
+                                        <div className="grid grid-cols-3 gap-2">
+                                            <Button
+                                                size="sm"
+                                                variant="outline"
+                                                className="h-8 bg-emerald-50/50 text-emerald-600 border-emerald-100 hover:bg-emerald-100/70 text-[10px] font-black transition-all active:scale-95"
+                                                onClick={() => handleMarkAttendance(m._id, m.name, "Full Day", selectedDate, "Team")}
+                                            >
+                                                FULL
+                                            </Button>
+                                            <Button
+                                                size="sm"
+                                                variant="outline"
+                                                className="h-8 bg-amber-50/50 text-amber-600 border-amber-100 hover:bg-amber-100/70 text-[10px] font-black transition-all active:scale-95"
+                                                onClick={() => handleMarkAttendance(m._id, m.name, "Half Day", selectedDate, "Team")}
+                                            >
+                                                HALF
+                                            </Button>
+                                            <Button
+                                                size="sm"
+                                                variant="outline"
+                                                className="h-8 bg-rose-50/50 text-rose-600 border-rose-100 hover:bg-rose-100/70 text-[10px] font-black transition-all active:scale-95"
+                                                onClick={() => handleMarkAttendance(m._id, m.name, "Leave", selectedDate, "Team")}
+                                            >
+                                                LEAVE
+                                            </Button>
+                                        </div>
                                     </div>
-                                    <div className="grid grid-cols-3 gap-2">
-                                        <Button
-                                            size="sm"
-                                            variant="outline"
-                                            className="h-8 bg-emerald-50/50 text-emerald-600 border-emerald-100 hover:bg-emerald-100/70 text-[10px] font-black transition-all active:scale-95"
-                                            onClick={() => handleMarkAttendance(m._id, m.name, "Full Day", selectedDate, "Team")}
-                                        >
-                                            FULL
-                                        </Button>
-                                        <Button
-                                            size="sm"
-                                            variant="outline"
-                                            className="h-8 bg-amber-50/50 text-amber-600 border-amber-100 hover:bg-amber-100/70 text-[10px] font-black transition-all active:scale-95"
-                                            onClick={() => handleMarkAttendance(m._id, m.name, "Half Day", selectedDate, "Team")}
-                                        >
-                                            HALF
-                                        </Button>
-                                        <Button
-                                            size="sm"
-                                            variant="outline"
-                                            className="h-8 bg-rose-50/50 text-rose-600 border-rose-100 hover:bg-rose-100/70 text-[10px] font-black transition-all active:scale-95"
-                                            onClick={() => handleMarkAttendance(m._id, m.name, "Leave", selectedDate, "Team")}
-                                        >
-                                            LEAVE
-                                        </Button>
-                                    </div>
-                                </div>
-                            ))}
+                                ))}
+                            </div>
                         </div>
-                    </div>
+                    )
                 )}
 
                 {/* Logs Table */}
@@ -461,6 +539,48 @@ export default function AttendancePage() {
                         )}
                     </CardContent>
                 </Card>
+
+                {/* Exceptions Area */}
+                {calendarExceptions.length > 0 && (
+                    <Card className="rounded-lg border bg-card shadow-sm overflow-hidden mt-6">
+                        <CardHeader className="bg-muted/30 border-b py-3">
+                            <CardTitle className="text-xs font-bold flex items-center gap-2 text-muted-foreground">
+                                <CalendarIcon className="h-4 w-4 text-primary" />
+                                Active Calendar Overrides
+                            </CardTitle>
+                        </CardHeader>
+                        <CardContent className="p-0">
+                            <div className="max-h-48 overflow-y-auto">
+                                <table className="w-full text-left text-[10px]">
+                                    <tbody className="divide-y divide-border">
+                                        {calendarExceptions.map((ex) => (
+                                            <tr key={ex._id} className="hover:bg-muted/30 transition-colors">
+                                                <td className="px-6 py-2 font-bold text-foreground">
+                                                    {format(new Date(ex.date), "EEEE, MMM do")}
+                                                </td>
+                                                <td className="px-6 py-2">
+                                                    <Badge variant="outline" className="text-[9px] bg-primary/5 text-primary border-primary/10 font-bold uppercase tracking-wider">
+                                                        {ex.type}
+                                                    </Badge>
+                                                </td>
+                                                <td className="px-6 py-2 text-right">
+                                                    <Button
+                                                        variant="ghost"
+                                                        size="icon"
+                                                        className="h-6 w-6 text-muted-foreground hover:text-destructive"
+                                                        onClick={() => handleDeleteException(ex._id)}
+                                                    >
+                                                        <Trash2 className="h-3 w-3" />
+                                                    </Button>
+                                                </td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </CardContent>
+                    </Card>
+                )}
 
                 {/* Historical Missing Dates Alert */}
                 {/* {activeTab === "team" && missingDates.length > 0 && (

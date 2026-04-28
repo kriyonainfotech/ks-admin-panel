@@ -34,12 +34,19 @@ export default function LoginPage() {
         console.error("❌ Error in AuthContext.login:", authErr);
       }
 
-      // Redirect to admin dashboard
-      if (data.user?.role === "Admin" || data.user?.role === "Superadmin") {
-        window.location.href = "/admin";
-      } else if (data.user?.role === "Team") {
-        window.location.href = "/team";
+      // ⚡ DEBUG LOG
+      console.log("Auth Debug - User Role:", data.user?.role);
+
+      // Redirect based on role
+      if (data.user && (data.user.role === "Admin" || data.user.role === "Superadmin")) {
+        console.log("Navigating to Admin Dashboard...");
+        router.push("/admin");
+      } else if (data.user && data.user.role === "Team") {
+        console.log("Navigating to Team Dashboard...");
+        router.push("/team");
       } else {
+        console.warn("Unauthorized or unknown role:", data.user?.role);
+        alert("You do not have permission to access this panel.");
         router.push("/login");
       }
     } catch (err: any) {

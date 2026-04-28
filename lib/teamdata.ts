@@ -62,6 +62,11 @@ export interface Team {
             ifscCode: string;
         };
     };
+    performance?: {
+        daily: { total: number; done: number; percentage: number };
+        monthly: { total: number; done: number; percentage: number };
+        attendance: { present: number; totalDays: number };
+    };
 }
 
 export interface TeamResponse {

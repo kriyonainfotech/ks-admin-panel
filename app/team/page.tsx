@@ -20,8 +20,11 @@ import {
     Building2,
     MoreHorizontal,
     LayoutDashboard,
-    Loader2
+    Loader2,
+    Zap,
+    Trophy
 } from "lucide-react"
+
 import { isPast, isToday } from "date-fns"
 // import AttendanceQR from "@/components/attendance/AttendanceQR"
 import { getAttendanceStatus, clockIn, clockOut } from "@/src/redux/slices/attendanceSlice"
@@ -63,20 +66,46 @@ export default function TeamPage() {
     // 2. Computed Stats
     const stats = useMemo(() => {
         const total = tasks.length;
-        const overdue = tasks.filter(t =>
+        const completedCount = tasks.filter(t => ["Done", "Approved", "Posted"].includes(t.status)).length;
+        const overdueCount = tasks.filter(t =>
             (isPast(new Date(t.dueDate)) && !isToday(new Date(t.dueDate))) &&
             !["Done", "Approved", "Posted"].includes(t.status)
         ).length;
-        const pending = tasks.filter(t => !["Done", "Approved", "Posted"].includes(t.status)).length;
-        const completed = tasks.filter(t => ["Done", "Approved", "Posted"].includes(t.status)).length;
+        const pendingCount = tasks.filter(t => !["Done", "Approved", "Posted"].includes(t.status)).length;
 
-        return { total, overdue, pending, completed };
+        return { total, overdue: overdueCount, pending: pendingCount, completed: completedCount };
     }, [tasks]);
+
+    // Performance Stats (Separated to stabilize dates)
+    const performanceStats = useMemo(() => {
+        const now = new Date();
+        const currentMonth = now.getMonth();
+        const currentYear = now.getFullYear();
+
+        // Daily Stats
+        const dailyTasks = tasks.filter(t => isToday(new Date(t.dueDate)));
+        const dailyTotal = dailyTasks.length;
+        const dailyDone = dailyTasks.filter(t => t.status === "Done").length;
+        const dailyPercentage = dailyTotal > 0 ? Number(((dailyDone / dailyTotal) * 100).toFixed(2)) : 0;
+
+        // Monthly Stats (Current Month)
+        const monthlyTasks = tasks.filter(t => {
+            const d = new Date(t.dueDate);
+            return d.getMonth() === currentMonth && d.getFullYear() === currentYear;
+        });
+        const monthlyTotal = monthlyTasks.length;
+        const monthlyDone = monthlyTasks.filter(t => t.status === "Done").length;
+        const monthlyPercentage = monthlyTotal > 0 ? Number(((monthlyDone / monthlyTotal) * 100).toFixed(2)) : 0;
+
+        return { dailyPercentage, monthlyPercentage };
+    }, [tasks]);
+
 
     // 3. TODAY'S TASKS (Filtered strictly for today)
     const todaysTasks = useMemo(() => {
         return tasks.filter(t => isToday(new Date(t.dueDate)));
     }, [tasks]);
+
 
     const isLoading = tasksLoading || clientsLoading;
 
@@ -164,7 +193,24 @@ export default function TeamPage() {
 
             {/* Attendance Scanner Removed */}
 
+            {/* Performance Metrics Row */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-5 px-6">
+                <PerformanceCard
+                    title="Daily Performance"
+                    percentage={performanceStats.dailyPercentage}
+                    icon={<Zap className="h-5 w-5 text-amber-500" />}
+                    subtitle="Tasks completed today vs assigned"
+                />
+                <PerformanceCard
+                    title="Monthly Performance"
+                    percentage={performanceStats.monthlyPercentage}
+                    icon={<Trophy className="h-5 w-5 text-indigo-500" />}
+                    subtitle="Current month's completion rate"
+                />
+            </div>
+
             <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+
                 {/* Wallet Card - Takes up 1 column on md+ */}
                 <div className="md:col-span-1">
                     {wallet ? (
@@ -325,6 +371,43 @@ export default function TeamPage() {
 
             </div>
         </div>
+    )
+}
+
+// Performance Card with Progress Bar
+function PerformanceCard({ title, percentage, icon, subtitle }: any) {
+    return (
+        <Card className="border-slate-200 shadow-sm overflow-hidden bg-white">
+            <CardContent className="p-5">
+                <div className="flex items-center justify-between mb-4">
+                    <div className="flex items-center gap-3">
+                        <div className="p-2 bg-slate-50 rounded-lg">
+                            {icon}
+                        </div>
+                        <div>
+                            <h3 className="text-sm font-bold text-slate-900">{title}</h3>
+                            <p className="text-[10px] text-slate-500 font-medium">{subtitle}</p>
+                        </div>
+                    </div>
+                    <span className="text-2xl font-black text-slate-900">{percentage}%</span>
+                </div>
+
+                {/* Progress Bar Container */}
+                <div className="w-full h-2.5 bg-slate-100 rounded-full overflow-hidden">
+                    <div
+                        className={`h-full transition-all duration-500 ease-out ${percentage >= 80 ? "bg-emerald-500" :
+                            percentage >= 50 ? "bg-amber-500" : "bg-rose-500"
+                            }`}
+                        style={{ width: `${percentage}%` }}
+                    />
+                </div>
+
+                <div className="flex justify-between mt-2">
+                    <span className="text-[10px] font-bold text-slate-400">0%</span>
+                    <span className="text-[10px] font-bold text-slate-400">100%</span>
+                </div>
+            </CardContent>
+        </Card>
     )
 }
 

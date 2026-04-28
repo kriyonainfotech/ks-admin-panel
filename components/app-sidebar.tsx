@@ -72,6 +72,8 @@ const MENU_ITEMS_SUPERADMIN = [
 
 const MENU_ITEMS_ADMIN = [
     { title: "Dashboard", url: "/admin", icon: LayoutDashboard },
+    { title: "My SOP", url: "/admin/sop", icon: FileText },
+    { title: "My Rules", url: "/admin/rules", icon: ShieldCheck },
     { title: "Client Management", url: "/admin/client", icon: Store },
     { title: "Tasks Management", url: "/admin/tasks", icon: NotebookPen },
     { title: "Team Management", url: "/admin/team", icon: Briefcase },

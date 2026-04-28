@@ -25,10 +25,12 @@ import {
 import { Client } from "@/lib/clientdata";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
+import { Textarea } from "@/components/ui/textarea";
+import { Label } from "@/components/ui/label";
 
 interface TeamTaskTableProps {
     data: any[];
-    onStatusChange: (id: string, status: string) => Promise<any>;
+    onStatusChange: (id: string, status: string, note?: string) => Promise<any>;
     onView: (task: any) => void;
     statusOptions?: OptionItem[];
     allowedStatuses?: string[];
@@ -87,18 +89,20 @@ export function TeamTaskTable({ data, onStatusChange, onView, statusOptions = []
 
     // State for Confirmation Modal
     const [confirmAction, setConfirmAction] = useState<{ id: string, status: string, title: string } | null>(null);
+    const [statusNote, setStatusNote] = useState("");
     const [contactInfoClient, setContactInfoClient] = useState<Client | null>(null);
 
     // Handler to execute the update
     const handleConfirm = async () => {
         if (confirmAction) {
             try {
-                await toast.promise(onStatusChange(confirmAction.id, confirmAction.status), {
+                await toast.promise(onStatusChange(confirmAction.id, confirmAction.status, statusNote), {
                     loading: 'Updating task status...',
                     success: 'Task status updated successfully',
                     error: 'Failed to update task status',
                 });
                 setConfirmAction(null);
+                setStatusNote(""); // Reset note
             } catch (error) {
                 console.error("Failed to update status:", error);
             }
@@ -277,8 +281,13 @@ export function TeamTaskTable({ data, onStatusChange, onView, statusOptions = []
         const today = startOfDay(new Date());
 
         // 1. GREEN: Done
-        if (["Done", "Approved", "Posted"].includes(status)) {
+        if (status === "Done") {
             return "bg-emerald-50/50 hover:bg-emerald-50/80 border-l-4 border-l-emerald-500";
+        }
+
+        // 1.5 BLUE: Approved / Posted
+        if (["Approved", "Posted"].includes(status)) {
+            return "bg-blue-50/50 hover:bg-blue-50/80 border-l-4 border-l-blue-500";
         }
 
         if (!relevantDate) return "bg-white";
@@ -337,6 +346,26 @@ export function TeamTaskTable({ data, onStatusChange, onView, statusOptions = []
                             Are you sure you want to mark <strong>"{confirmAction?.title}"</strong> as <span className="font-bold text-foreground">{confirmAction?.status}</span>?
                         </DialogDescription>
                     </DialogHeader>
+
+                    <div className="space-y-3 py-4">
+                        <div className="space-y-1.5">
+                            <Label htmlFor="status-note" className="text-xs font-bold uppercase tracking-wider text-slate-500">
+                                Update Note (Optional)
+                            </Label>
+                            <Textarea
+                                id="status-note"
+                                placeholder="Add a reason or brief update for this status change..."
+                                value={statusNote}
+                                onChange={(e) => setStatusNote(e.target.value)}
+                                className="min-h-[100px] resize-none focus:ring-primary"
+                                maxLength={300}
+                            />
+                            <div className="text-[10px] text-right text-slate-400 font-medium">
+                                {statusNote.length}/300 characters
+                            </div>
+                        </div>
+                    </div>
+
                     <DialogFooter className="gap-2 sm:gap-0">
                         <Button variant="outline" onClick={() => setConfirmAction(null)}>Cancel</Button>
                         <Button

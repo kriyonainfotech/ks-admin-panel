@@ -16,11 +16,18 @@ export function TaskStats({ tasks, statusOptions = [] }: TaskStatsProps) {
         const today = startOfDay(new Date()); // 00:00:00 today
 
         // 1. Define "Done" Statuses
-        const DONE_STATUSES = ["Done", "Posted", "Approved", "Completed"];
+        const DONE_STATUSES = ["Done"];
+        const APPROVED_STATUSES = ["Approved", "Posted"];
 
-        // 2. Separate Active vs Done
+        // 2. Separate Buckets
         const doneTasks = tasks.filter(t => DONE_STATUSES.includes(t.status));
-        const activeTasks = tasks.filter(t => !DONE_STATUSES.includes(t.status));
+        const approvedTasks = tasks.filter(t => APPROVED_STATUSES.includes(t.status));
+        
+        // Active Tasks are those that are NOT Done and NOT Approved
+        const activeTasks = tasks.filter(t => 
+            !DONE_STATUSES.includes(t.status) && 
+            !APPROVED_STATUSES.includes(t.status)
+        );
 
         // 3. Calculate Buckets
         const overdueTasks = activeTasks.filter(t => {
@@ -53,8 +60,14 @@ export function TaskStats({ tasks, statusOptions = [] }: TaskStatsProps) {
                 color: "bg-emerald-50 text-emerald-700 border-emerald-200"
             },
             {
+                label: "Approved",
+                value: approvedTasks.length,
+                percent: total ? Math.round((approvedTasks.length / total) * 100) : 0,
+                color: "bg-blue-50 text-blue-700 border-blue-200"
+            },
+            {
                 label: "Pending", // Includes Today + Future
-                value: pendingTasks.length, // Should be 30 in your example
+                value: pendingTasks.length,
                 percent: total ? Math.round((pendingTasks.length / total) * 100) : 0,
                 color: "bg-yellow-50 text-yellow-700 border-yellow-200"
             },
@@ -76,7 +89,7 @@ export function TaskStats({ tasks, statusOptions = [] }: TaskStatsProps) {
     }, [tasks]);
 
     return (
-        <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-3 w-full">
+        <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-5 gap-3 w-full">
             {stats.map((stat, i) => (
                 <div key={i} className={cn("p-3 rounded-xl border flex justify-between h-20 shadow-sm", stat.color)}>
                     <div className="flex flex-col justify-between items-start">
