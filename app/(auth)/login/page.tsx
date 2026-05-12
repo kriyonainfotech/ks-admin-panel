@@ -24,34 +24,35 @@ export default function LoginPage() {
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
+
     setIsLoading(true);
 
     try {
-      const { data } = await axios.post(`${API_URL}/api/auth/panel-login`, { email, password });
-      try {
-        login(data.token, data.user);
-      } catch (authErr) {
-        console.error("❌ Error in AuthContext.login:", authErr);
-      }
+      const { data } = await axios.post(
+        `${API_URL}/api/auth/admin-login`,
+        {
+          email,
+          password,
+        }
+      );
 
-      // ⚡ DEBUG LOG
-      console.log("Auth Debug - User Role:", data.user?.role);
+      console.log("Admin Login Success:", data);
 
-      // Redirect based on role
-      if (data.user && (data.user.role === "Admin" || data.user.role === "Superadmin")) {
-        console.log("Navigating to Admin Dashboard...");
-        router.push("/admin");
-      } else if (data.user && data.user.role === "Team") {
-        console.log("Navigating to Team Dashboard...");
-        router.push("/team");
-      } else {
-        console.warn("Unauthorized or unknown role:", data.user?.role);
-        alert("You do not have permission to access this panel.");
-        router.push("/login");
-      }
+      // Save auth
+      login(data.token, data.user);
+
+      // Navigate to admin panel
+      router.push("/admin");
+
     } catch (err: any) {
-      console.error(err);
-      alert(err.response?.data?.message || "Something went wrong. Try again.");
+      // console.error("Admin Login Error:", err);
+
+      const errorMessage =
+        err.response?.data?.message ||
+        "Login failed. Please try again.";
+
+      alert(errorMessage);
+
     } finally {
       setIsLoading(false);
     }

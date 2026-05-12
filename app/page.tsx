@@ -7,18 +7,15 @@ import { Loader2 } from "lucide-react";
 
 export default function HomePage() {
   const { user, isLoading } = useAuth();
+  console.log("user", user);
   const router = useRouter();
 
   useEffect(() => {
     if (!isLoading) {
       if (!user) {
         router.push("/login");
-      } else if (user.role === "Superadmin" || user.role === "Admin") {
-        router.push("/admin");
-      } else if (user.role === "Team") {
-        router.push("/team");
       } else {
-        router.push("/login");
+        router.push("/admin");
       }
     }
   }, [user, isLoading, router]);

@@ -18,7 +18,8 @@ import { getClientColumns } from "./components/column";
 import { ClientViewSheet } from "./components/ClientViewSheet";
 import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Search } from "lucide-react";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Search, Users, Activity, UserPlus } from "lucide-react";
 import { Client } from "@/lib/clientdata";
 import { DataHandler } from "@/components/DataHandler";
 import { AssignedPackagesModal } from "@/components/subscriptions/AssignedPackagesModal";
@@ -38,6 +39,7 @@ export default function AdminClientsPage() {
     const [currentClient, setCurrentClient] = useState<Client | null>(null);
     const [viewSheetOpen, setViewSheetOpen] = useState(false);
     const [viewPackagesOpen, setViewPackagesOpen] = useState(false);
+    const [statusTab, setStatusTab] = useState("all");
 
     useEffect(() => {
         dispatch(fetchClients());
@@ -60,8 +62,13 @@ export default function AdminClientsPage() {
         teamMembers: teamMembers
     }), [teamMembers]);
 
+    const filteredClients = useMemo(() => {
+        if (statusTab === "all") return clients;
+        return clients.filter(c => c.status?.toLowerCase() === statusTab.toLowerCase());
+    }, [clients, statusTab]);
+
     const table = useReactTable({
-        data: clients,
+        data: filteredClients,
         columns,
         getCoreRowModel: getCoreRowModel(),
         getFilteredRowModel: getFilteredRowModel(),
@@ -71,18 +78,35 @@ export default function AdminClientsPage() {
 
     return (
         <div className="flex flex-col gap-6">
-            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 border-b pb-4">
-                <div>
-                    <h1 className="text-2xl font-bold tracking-tight">Assigned Clients</h1>
-                    <p className="text-xs text-muted-foreground">View and manage clients assigned specifically to you.</p>
+            <div className="flex flex-col gap-4">
+                <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 border-b pb-4">
+                    <div>
+                        <h1 className="text-2xl font-bold tracking-tight">Assigned Clients</h1>
+                        <p className="text-xs text-muted-foreground">View and manage clients assigned specifically to you.</p>
+                    </div>
+
+                    <Tabs value={statusTab} onValueChange={setStatusTab} className="w-full md:w-auto">
+                        <TabsList className="bg-muted/50 p-1">
+                            <TabsTrigger value="all" className="gap-2 px-4">
+                                <Users size={14} /> All
+                            </TabsTrigger>
+                            <TabsTrigger value="active" className="gap-2 px-4">
+                                <Activity size={14} className="text-emerald-500" /> Active
+                            </TabsTrigger>
+                            <TabsTrigger value="onboarding" className="gap-2 px-4">
+                                <UserPlus size={14} className="text-amber-500" /> Onboarding
+                            </TabsTrigger>
+                        </TabsList>
+                    </Tabs>
                 </div>
-                <div className="relative w-full md:max-w-sm">
+
+                <div className="relative w-full">
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                     <Input
                         placeholder="Search assigned clients..."
                         value={filter}
                         onChange={(e) => setFilter(e.target.value)}
-                        className="pl-9 bg-card w-full"
+                        className="pl-9 bg-card w-full h-11"
                     />
                 </div>
             </div>
