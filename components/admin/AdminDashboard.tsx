@@ -37,6 +37,16 @@ export function AdminDashboard() {
         dispatch(fetchTeam(undefined));
     }, [dispatch]);
 
+    // Map of member specializations for performance tracking
+    const isVideoEditorMap = React.useMemo(() => {
+        const map: Record<string, boolean> = {};
+        (teamMembers || []).forEach((m: any) => {
+            const spec = (m.profile?.specialization || m.specialization || "").toLowerCase();
+            map[m._id?.toString()] = spec.includes("video");
+        });
+        return map;
+    }, [teamMembers]);
+
     const stats = [
         {
             title: "Total Team Members",
@@ -54,21 +64,39 @@ export function AdminDashboard() {
         },
         {
             title: "Active Tasks (Today)",
-            value: tasks.filter((t: any) => t.dueDate && isToday(new Date(t.dueDate)) && t.status !== "Completed" && t.status !== "Done").length,
+            value: tasks.filter((t: any) => {
+                if (!t.dueDate || !isToday(new Date(t.dueDate))) return false;
+                const assignedId = (typeof t.assignedTo === 'object' ? t.assignedTo?._id : t.assignedTo)?.toString();
+                const isVideo = isVideoEditorMap[assignedId];
+                const successStatuses = isVideo ? ["Approved", "Done", "Completed", "Posted"] : ["Done", "Completed", "Posted"];
+                return !successStatuses.includes(t.status);
+            }).length,
             icon: Clock,
             color: "text-amber-600",
             bg: "bg-amber-100",
         },
         {
             title: "Completed Tasks (Today)",
-            value: tasks.filter((t: any) => t.dueDate && isToday(new Date(t.dueDate)) && (t.status === "Completed" || t.status === "Done")).length,
+            value: tasks.filter((t: any) => {
+                if (!t.dueDate || !isToday(new Date(t.dueDate))) return false;
+                const assignedId = (typeof t.assignedTo === 'object' ? t.assignedTo?._id : t.assignedTo)?.toString();
+                const isVideo = isVideoEditorMap[assignedId];
+                const successStatuses = isVideo ? ["Approved", "Done", "Completed", "Posted"] : ["Done", "Completed", "Posted"];
+                return successStatuses.includes(t.status);
+            }).length,
             icon: CheckCircle2,
             color: "text-green-600",
             bg: "bg-green-100",
         },
         {
             title: "Overdue Tasks",
-            value: tasks.filter((t: any) => t.dueDate && new Date(t.dueDate) < new Date() && t.status !== "Completed" && t.status !== "Done").length,
+            value: tasks.filter((t: any) => {
+                if (!t.dueDate || new Date(t.dueDate) >= new Date()) return false;
+                const assignedId = (typeof t.assignedTo === 'object' ? t.assignedTo?._id : t.assignedTo)?.toString();
+                const isVideo = isVideoEditorMap[assignedId];
+                const successStatuses = isVideo ? ["Approved", "Done", "Completed", "Posted"] : ["Done", "Completed", "Posted"];
+                return !successStatuses.includes(t.status);
+            }).length,
             icon: AlertCircle,
             color: "text-red-600",
             bg: "bg-red-100",
@@ -90,7 +118,14 @@ export function AdminDashboard() {
             });
 
             const total = memberTasks.length;
-            const completed = memberTasks.filter((t: any) => t.status === "Done").length;
+
+            // Performance Logic: For Video Editors, Approved + Done count as success. 
+            // For others, only Done counts (plus Posted/Completed for robustness).
+            const spec = (member.profile?.specialization || member.specialization || "").toLowerCase();
+            const isVideoEditor = spec.includes("video");
+            const successStatuses = isVideoEditor ? ["Approved", "Done", "Posted", "Completed"] : ["Done", "Posted", "Completed"];
+
+            const completed = memberTasks.filter((t: any) => successStatuses.includes(t.status)).length;
             const percentage = total > 0 ? Number(((completed / total) * 100).toFixed(2)) : 0;
 
             return {

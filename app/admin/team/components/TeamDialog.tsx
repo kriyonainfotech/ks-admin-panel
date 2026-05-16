@@ -164,7 +164,7 @@ export function TeamDialog({ open, onOpenChange, onSubmit, initialData, isLoadin
                         {!initialData && (
                             <div className="space-y-2">
                                 <Label>Initial Password</Label>
-                                <Input type="password" {...register("password", { required: true })} placeholder="••••••" />
+                                <Input type="password" {...register("password", { required: true })} placeholder="••••••" autoComplete="new-password" />
                             </div>
                         )}
 

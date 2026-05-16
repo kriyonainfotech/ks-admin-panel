@@ -81,6 +81,7 @@ export function ResetPasswordDialog({
                             id="new-password"
                             type="password"
                             placeholder="••••••••"
+                            autoComplete="new-password"
                             {...register("password", {
                                 required: "Password is required",
                                 minLength: { value: 6, message: "Must be at least 6 characters" }
@@ -100,6 +101,7 @@ export function ResetPasswordDialog({
                             id="confirm-password"
                             type="password"
                             placeholder="••••••••"
+                            autoComplete="new-password"
                             {...register("confirmPassword", {
                                 required: "Please confirm the password",
                                 validate: (val: string) => {
