@@ -110,10 +110,10 @@ export default function AdminTasksPage() {
 
     useEffect(() => {
         const setNameMap: Record<string, string> = {
-            "Admin": "superadmin_tasks_status",
+            "Admin": "admin_task_status",
             "Team": "team_tasks_status",
         };
-        const setName = setNameMap[activeTab] || "superadmin_tasks_status";
+        const setName = setNameMap[activeTab] || "admin_task_status";
         const taskStatusSet = optionSets.find(s => s.name === setName);
         if (taskStatusSet) setStatusOptions(taskStatusSet.options);
     }, [optionSets, activeTab]);

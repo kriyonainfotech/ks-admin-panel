@@ -80,10 +80,14 @@ export const getTaskColumns = ({ onEdit, onView, onDelete, onStatusChange, statu
             header: "Status",
             cell: ({ row }) => {
                 const status = row.original.status;
-                const option = statusOptions.find(opt => opt.value === status);
+                const option = statusOptions.find(opt => opt.value.toLowerCase() === status?.toLowerCase());
+                const selectValue = option ? option.value : status;
 
                 return (
-                    <Select value={status} onValueChange={(val) => onStatusChange(row.original._id, val)}>
+                    <Select value={selectValue} onValueChange={(val) => {
+                        const opt = statusOptions.find(o => o.value === val);
+                        onStatusChange(row.original._id, opt ? opt.label : val);
+                    }}>
                         <SelectTrigger className={cn(
                             "w-[130px] h-8 text-xs font-medium border-none shadow-none focus:ring-0",
                             option?.color ? "" : (fallbackStatusStyles[status] || "bg-gray-100 text-gray-700")
