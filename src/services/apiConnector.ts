@@ -13,11 +13,17 @@ export const apiConnector = axiosInstance;
 // Request Interceptor: Attach Token
 axiosInstance.interceptors.request.use(
     (config) => {
-        // Get token from localStorage or cookie
         const token = localStorage.getItem("token") || Cookies.get("token");
         if (token) {
             config.headers.Authorization = `Bearer ${token}`;
         }
+        
+        // Multi-Company Support: Attach active company context
+        const activeCompanyId = localStorage.getItem("active_company_id");
+        if (activeCompanyId) {
+            config.headers["x-company-id"] = activeCompanyId;
+        }
+        
         return config;
     },
     (error) => Promise.reject(error)
@@ -29,18 +35,9 @@ axiosInstance.interceptors.response.use(
     async (error) => {
         const originalRequest = error.config;
 
-        // Handle 403 Forbidden - Access Denied (Sign in again as Admin)
+        // Handle 403 Forbidden - Access Denied (Do NOT log out)
         if (error.response?.status === 403) {
-            localStorage.removeItem("token");
-            localStorage.removeItem("kriyona_user");
-            Cookies.remove("token");
-            
-            window.dispatchEvent(new CustomEvent("session-expired", { 
-                detail: { 
-                    title: "Access Denied", 
-                    message: "You don't have permission to perform this action. Please sign in with an administrative account." 
-                } 
-            }));
+            alert("Access Denied: You don't have permission to perform this action.");
             return Promise.reject(error);
         }
 
@@ -54,7 +51,7 @@ axiosInstance.interceptors.response.use(
                 // Call your refresh token endpoint
                 const { data } = await axios.post(`${BASE_URL}/api/auth/refresh-token`, { refreshToken: currentToken }, { withCredentials: true });
 
-                // Save new token
+                // Save new token (backend returns { success: true, token, user })
                 const newToken = data.token;
                 localStorage.setItem("token", newToken);
                 Cookies.set("token", newToken, { expires: 7 });
@@ -85,12 +82,7 @@ axiosInstance.interceptors.response.use(
             Cookies.remove("token");
 
             // Trigger Global Modal
-            window.dispatchEvent(new CustomEvent("session-expired", { 
-                detail: { 
-                    title: "Session Expired", 
-                    message: "Your session has timed out or is invalid. Please sign in again to continue." 
-                } 
-            }));
+            window.dispatchEvent(new Event("session-expired"));
         }
 
         return Promise.reject(error);

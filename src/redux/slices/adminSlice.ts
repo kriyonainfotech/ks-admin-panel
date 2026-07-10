@@ -49,21 +49,33 @@ export const createAdmin = createAsyncThunk<
     async (adminData, { rejectWithValue }) => {
         try {
             return await adminAPI.createAdmin(adminData);
-        } catch (err) {
-            return rejectWithValue("Failed to create admin");
+        } catch (error: any) {
+            return rejectWithValue(error.response?.data?.message || "Failed to create admin");
         }
     }
 );
 
-
+export const createSuperAdmin = createAsyncThunk<
+    SingleAdminResponse,
+    any
+>(
+    "superadmins/create",
+    async (adminData, { rejectWithValue }) => {
+        try {
+            return await adminAPI.createSuperAdmin(adminData);
+        } catch (error: any) {
+            return rejectWithValue(error.response?.data?.message || "Failed to create superadmin");
+        }
+    }
+);
 // UPDATE ADMIN
 export const updateAdmin = createAsyncThunk<SingleAdminResponse, { id: string; data: Partial<AdminUser> }>(
     "admins/update",
     async ({ id, data }, { rejectWithValue }) => {
         try {
             return await adminAPI.updateAdmin(id, data);
-        } catch (err) {
-            return rejectWithValue("Failed to update admin");
+        } catch (error: any) {
+            return rejectWithValue(error.response?.data?.message || "Failed to update admin");
         }
     }
 );
@@ -94,6 +106,30 @@ export const resetAdminPassword = createAsyncThunk(
             return rejectWithValue(
                 error.response?.data?.message || "Failed to reset password"
             );
+        }
+    }
+);
+
+export const updateAdminPermissions = createAsyncThunk(
+    "admins/updatePermissions",
+    async ({ id, permissions }: { id: string; permissions: string[] }, { rejectWithValue }) => {
+        try {
+            const response = await adminAPI.updatePermissions(id, permissions);
+            return { id, permissions: response.data }; 
+        } catch (error: any) {
+            return rejectWithValue(error.response?.data?.message || "Failed to update permissions");
+        }
+    }
+);
+
+export const grantExtraCompanyAccess = createAsyncThunk(
+    "admins/grantCompanyAccess",
+    async ({ id, companyId }: { id: string; companyId: string }, { rejectWithValue }) => {
+        try {
+            await adminAPI.grantCompanyAccess(id, companyId);
+            return { id, companyId };
+        } catch (error: any) {
+            return rejectWithValue(error.response?.data?.message || "Failed to grant company access");
         }
     }
 );
@@ -167,6 +203,21 @@ const adminSlice = createSlice({
                 state.error = action.payload as string;
             })
 
+            // CREATE SUPERADMIN
+            .addCase(createSuperAdmin.pending, (state) => {
+                state.isLoading = true;
+                state.error = null;
+            })
+            .addCase(createSuperAdmin.fulfilled, (state, action) => {
+                state.isLoading = false;
+                state.superadmins.unshift(action.payload.data);
+                state.totalSuperAdmins += 1;
+            })
+            .addCase(createSuperAdmin.rejected, (state, action) => {
+                state.isLoading = false;
+                state.error = action.payload as string;
+            })
+
             .addCase(updateAdmin.pending, (state) => {
                 state.isLoading = true;
                 state.error = null;
@@ -183,7 +234,14 @@ const adminSlice = createSlice({
                     state.admins[index] = updatedAdmin;
                     console.log("✅ Admin updated successfully:", state.admins[index]);
                 } else {
-                    console.warn(`⚠️ Admin with _id ${updatedAdmin._id} not found in state`);
+                    const saIndex = state.superadmins.findIndex(a => a._id === updatedAdmin._id);
+                    if (saIndex !== -1) {
+                        console.log(`🔄 Updating superadmin at index ${saIndex}:`, state.superadmins[saIndex]);
+                        state.superadmins[saIndex] = updatedAdmin;
+                        console.log("✅ Superadmin updated successfully");
+                    } else {
+                        console.warn(`⚠️ User with _id ${updatedAdmin._id} not found in state`);
+                    }
                 }
             })
             .addCase(updateAdmin.rejected, (state, action) => {
@@ -220,6 +278,32 @@ const adminSlice = createSlice({
                 const admin = state.admins.find(a => a._id === id);
                 if (admin) admin.passwordReset = true;
             })
+
+            // UPDATE PERMISSIONS
+            .addCase(updateAdminPermissions.pending, (state) => {
+                state.isLoading = true;
+                state.error = null;
+            })
+            .addCase(updateAdminPermissions.fulfilled, (state, action) => {
+                state.isLoading = false;
+                const { id, permissions } = action.payload;
+                
+                // Update in admins array
+                const adminIdx = state.admins.findIndex(a => a._id === id);
+                if (adminIdx !== -1) {
+                    state.admins[adminIdx].customPermissions = permissions;
+                } else {
+                    // Check in superadmins array
+                    const saIdx = state.superadmins.findIndex(a => a._id === id);
+                    if (saIdx !== -1) {
+                        state.superadmins[saIdx].customPermissions = permissions;
+                    }
+                }
+            })
+            .addCase(updateAdminPermissions.rejected, (state, action) => {
+                state.isLoading = false;
+                state.error = action.payload as string;
+            });
     }
 });
 

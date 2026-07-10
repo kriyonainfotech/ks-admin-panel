@@ -13,7 +13,7 @@ export default function TeamLayout({ children }: { children: React.ReactNode }) 
             <SidebarInset>
                 <PrivateRoute roles={["Team Member", "Team", "Admin", "Superadmin"]}>
                     {/* Header Row */}
-                    <SuperAdminHeader title="Team Dashboard" />
+                    <SuperAdminHeader />
                     {/* The Page Content */}
                     <div className="p-4 md:p-8 space-y-6">
                         {children}

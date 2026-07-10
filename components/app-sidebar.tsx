@@ -36,6 +36,7 @@ import {
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useAuth } from "@/src/context/AuthContext"
 import Image from "next/image";
+import { CompanySwitcher } from "./CompanySwitcher";
 import {
     AlertDialog,
     AlertDialogAction,
@@ -53,7 +54,10 @@ import {
 const MENU_ITEMS_SUPERADMIN = [
     { title: "Dashboard", url: "/superadmin", icon: LayoutDashboard },
     { title: "SOP", url: "/superadmin/sop", icon: FileText },
+    { title: "RULES", url: "/superadmin/rules", icon: ShieldCheck },
+    { title: "My SOP & Rules", url: "/superadmin/my-sops-rules", icon: FileText },
     { title: "Admin Management", url: "/superadmin/admin", icon: ShieldCheck },
+    // { title: "Access Control", url: "/superadmin/access", icon: ShieldCheck },
     { title: "Team Management", url: "/superadmin/team", icon: Briefcase },
     { title: "Packages & Services", url: "/superadmin/packages-services", icon: Store },
     { title: "Client Management", url: "/superadmin/client", icon: Store },
@@ -66,18 +70,21 @@ const MENU_ITEMS_SUPERADMIN = [
     { title: "Payroll & Salaries", url: "/superadmin/payroll", icon: Wallet },
     { title: "Payments & Finances", url: "/superadmin/payments", icon: HandCoins },
     // { title: "Companies", url: "/superadmin/companies", icon: Building2 }, // NEW
-    // { title: "Developer Settings", url: "/superadmin/settings", icon: Settings },
-    { title: "Rules & Regulations", url: "/superadmin/rules", icon: ShieldCheck }, // Using ShieldCheck or similar
+    // { title: "Developer Settings", url: "/superadmin/", icon: Settings },
 ]
 
 const MENU_ITEMS_ADMIN = [
-    { title: "Dashboard", url: "/admin", icon: LayoutDashboard },
-    { title: "My SOP", url: "/admin/sop", icon: FileText },
-    { title: "My Rules", url: "/admin/rules", icon: ShieldCheck },
-    { title: "Client Management", url: "/admin/client", icon: Store },
-    { title: "Tasks Management", url: "/admin/tasks", icon: NotebookPen },
-    { title: "Team Management", url: "/admin/team", icon: Briefcase },
-    { title: "Attendance", url: "/admin/attendance", icon: QrCode },
+    { title: "Dashboard", url: "/superadmin/admin", icon: LayoutDashboard },
+    { title: "My SOP", url: "/team/sop", icon: FileText },
+    { title: "My Rules", url: "/team/rules", icon: ShieldCheck },
+    { title: "Team Management", url: "/superadmin/team", icon: Briefcase }, // Admin matches Team? Or manages Team? Assuming manage.
+    { title: "Client Management", url: "/superadmin/client", icon: Store },
+    { title: "Tasks Management", url: "/superadmin/tasks", icon: NotebookPen },
+    { title: "Schedule Management", url: "/superadmin/schedule", icon: LayoutDashboard },
+    { title: "Leads Management", url: "/superadmin/leads", icon: FunnelPlus },
+    { title: "Packages & Services", url: "/superadmin/packages-services", icon: Store },
+    { title: "Attendance", url: "/superadmin/attendance", icon: QrCode },
+    { title: "Settings", url: "/superadmin/settings", icon: Settings },
 ]
 
 const MENU_ITEMS_TEAM = [
@@ -102,26 +109,7 @@ export function AppSidebar() {
         roleLabel = "Loading...";
         menuItems = []; // Don't show any items while loading to prevent flickering
     } else if (role === "Superadmin") {
-        const isManager = user?.email?.includes("yogeshnarola");
-        menuItems = MENU_ITEMS_SUPERADMIN.filter(item => {
-            // SOP and Rules management items are /superadmin/sop and /superadmin/rules
-            if (item.url === "/superadmin/sop" || item.url === "/superadmin/rules") {
-                return isManager;
-            }
-            return true;
-        }).map(item => {
-            // For non-managers, if they are viewing dashboard, we don't change it.
-            // But we should add "My SOP" and "My Rules" if they aren't managers.
-            return item;
-        });
-
-        if (!isManager) {
-            // My SOP 2nd
-            menuItems.splice(1, 0, { title: "My SOP", url: "/superadmin/sop-view", icon: FileText });
-            // My Rules last
-            menuItems.push({ title: "My Rules", url: "/superadmin/rules-view", icon: ShieldCheck });
-        }
-
+        menuItems = MENU_ITEMS_SUPERADMIN;
         roleLabel = "Superadmin";
     } else if (role === "Admin") {
         menuItems = MENU_ITEMS_ADMIN;
@@ -138,7 +126,7 @@ export function AppSidebar() {
                 <SidebarMenu>
                     <SidebarMenuItem>
                         <SidebarMenuButton size="lg" asChild>
-                            <Link href={role === 'Superadmin' ? "/superadmin" : role === 'Admin' ? "/admin" : "/team"}>
+                            <Link href={role === 'Superadmin' ? "/superadmin" : role === 'Admin' ? "/superadmin/admin" : "/team"}>
                                 <div className="relative flex aspect-square size-10 items-center justify-center rounded-lg">
                                     <Image
                                         src="/logo.svg"
@@ -155,6 +143,7 @@ export function AppSidebar() {
                         </SidebarMenuButton>
                     </SidebarMenuItem>
                 </SidebarMenu>
+
             </SidebarHeader>
 
             {/* 2. Content: Main Navigation */}

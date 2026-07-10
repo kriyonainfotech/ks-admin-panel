@@ -13,6 +13,7 @@ import {
 import { useAuth } from "@/src/context/AuthContext"
 import { useRouter, usePathname } from "next/navigation"
 import { NotificationBell } from "./NotificationBell"
+import { CompanySwitcher } from "./CompanySwitcher"
 
 export function SuperAdminHeader({ title }: { title?: string }) {
 
@@ -20,25 +21,51 @@ export function SuperAdminHeader({ title }: { title?: string }) {
     const pathname = usePathname();
     const { user } = useAuth();
 
-    // Map path to title
-    const getPageTitle = (path: string) => {
+    const getDynamicTitle = (path: string) => {
         if (title) return title;
-        
-        const segments = path.split("/").filter(Boolean);
-        const lastSegment = segments[segments.length - 1];
-        
-        if (!lastSegment || lastSegment === "admin" || lastSegment === "superadmin") return "Dashboard";
-        
-        if (lastSegment.toLowerCase() === "sop") return "SOP";
-        
-        // Convert kkab-case to Title Case (e.g. tasks-management -> Tasks Management)
-        return lastSegment
+        if (path === "/superadmin") return "Dashboard";
+        if (path === "/team") return "Team Dashboard";
+
+        // Custom Title Mappings
+        const mapping: Record<string, string> = {
+            "/superadmin/users": "Users Management",
+            "/superadmin/leads": "Leads Management",
+            "/superadmin/tasks": "Task Management",
+            "/superadmin/team": "Team Management",
+            "/superadmin/attendance": "Attendance Management",
+            "/superadmin/packages-services": "Package & Services",
+            "/superadmin/assign-packages": "Assign Package & Services",
+            "/superadmin/payroll": "Salary Management",
+            "/superadmin/payments": "Payment Management",
+            "/superadmin/profile": "Profile",
+            "/superadmin/settings": "Settings",
+            "/superadmin/sop": "SOP Management",
+            "/superadmin/sop-view": "SOP",
+            "/superadmin/schedule": "Schedule Management",
+            "/superadmin/client": "Client Management",
+            "/superadmin/companies": "Companies Management",
+            "/superadmin/access": "Access Control",
+            "/superadmin/admin": "Admin Management",
+            "/superadmin/ui-builder": "UI Builder",
+            "/superadmin/rules": "Rules Management",
+            "/superadmin/rules-view": "Rules & Regulations",
+            "/superadmin/notifications": "Notifications",
+        };
+
+        if (mapping[path]) return mapping[path];
+
+        // Default: take the last piece and capitalize
+        const parts = path.split("/").filter(Boolean);
+        const last = parts[parts.length - 1];
+        if (!last || last === "superadmin") return "Overview";
+
+        return last
             .split("-")
-            .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+            .map(p => p.charAt(0).toUpperCase() + p.slice(1))
             .join(" ");
     };
 
-    const displayTitle = getPageTitle(pathname);
+    const displayTitle = getDynamicTitle(pathname);
 
     const getInitials = (name?: string) => {
         if (!name) return "U";
@@ -53,7 +80,9 @@ export function SuperAdminHeader({ title }: { title?: string }) {
             {/* Left: Hamburger + Title */}
             <div className="flex items-center gap-4">
                 <SidebarTrigger className="text-gray-600 dark:text-gray-200" />
-                <div className="text-lg font-semibold text-gray-700 dark:text-gray-200">{displayTitle}</div>
+                <div className="text-lg font-bold text-gray-800 dark:text-gray-200 tracking-tight">
+                    {displayTitle}
+                </div>
             </div>
 
             {/* Right: Notifications + Profile Avatar */}
@@ -73,13 +102,18 @@ export function SuperAdminHeader({ title }: { title?: string }) {
                             </Avatar>
                         </button>
                     </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end" className="w-40 bg-white dark:bg-gray-800 rounded-md shadow-lg">
+                    <DropdownMenuContent align="end" className="w-64 bg-white dark:bg-gray-800 rounded-xl shadow-2xl p-0 overflow-hidden border-slate-200">
+                        {/* Company Switcher Area */}
+                        <div className="bg-slate-50/80 border-b outline-none">
+                            <CompanySwitcher />
+                        </div>
+
                         <DropdownMenuItem
-                            onClick={() => router.push(user?.role === 'Team' ? "/team/profile" : "/admin/profile")}
-                            className="cursor-pointer gap-2"
+                            onClick={() => router.push("/superadmin/profile")}
+                            className="cursor-pointer gap-2 m-1 rounded-lg font-medium"
                         >
                             <User className="h-4 w-4" />
-                            Profile
+                            My Profile
                         </DropdownMenuItem>
                     </DropdownMenuContent>
                 </DropdownMenu>

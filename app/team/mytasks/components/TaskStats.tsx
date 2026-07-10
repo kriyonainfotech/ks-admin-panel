@@ -1,75 +1,102 @@
 "use client";
 
 import { useMemo } from "react";
+import type { CSSProperties } from "react";
 import { cn } from "@/lib/utils";
-import { isSameDay, isBefore, startOfDay, parseISO } from "date-fns";
+import { isBefore, isSameDay, startOfDay, parseISO } from "date-fns";
+import { DateRange } from "react-day-picker";
 import { OptionItem } from "@/src/services/optionSetService";
+import { getStatusColor, isAtOrAfterStatus, isStatus, OVERDUE_COLOR, paletteStyle } from "./statusPalette";
 
 interface TaskStatsProps {
     tasks: any[];
     statusOptions?: OptionItem[];
+    roleLabel?: string;
+    dateRange?: DateRange;
+    tabs?: { statuses: string[]; filterMode?: 'POSTING_ONLY' | 'EXCLUDE_POSTING' | 'DEFAULT' }[];
 }
 
-export function TaskStats({ tasks, statusOptions = [] }: TaskStatsProps) {
+interface StatCard {
+    label: string;
+    value: number;
+    percent: number;
+    className?: string;
+    style?: CSSProperties;
+}
+
+export function TaskStats({ tasks, statusOptions = [], roleLabel = "Team Member", dateRange, tabs = [] }: TaskStatsProps) {
     const stats = useMemo(() => {
-        const total = tasks.length || 0;
         const today = startOfDay(new Date()); // 00:00:00 today
+        const isVideoEditor = roleLabel.toLowerCase().includes("video");
+        const isDesigner = roleLabel.toLowerCase().includes("design");
+        const progressStatus = isVideoEditor ? "Edit" : isDesigner ? "Design" : null;
+        const progressLabel = isVideoEditor ? "Edited" : isDesigner ? "Designed" : null;
+        const selectedDate = dateRange?.from ? startOfDay(dateRange.from) : null;
+        const unitTabs = tabs.length > 0 ? tabs : [{ statuses: ["Approved"], filterMode: "DEFAULT" as const }];
 
-        // 1. Define "Done" Statuses
-        const DONE_STATUSES = ["Done"];
-        const APPROVED_STATUSES = ["Approved", "Posted"];
+        const units = tasks.flatMap((task) => unitTabs.flatMap((tab) => {
+            const mode = tab.filterMode || "DEFAULT";
+            const relevantDate = mode === "POSTING_ONLY" ? task.postingDate : task.dueDate;
+            const finalStatus = tab.statuses[tab.statuses.length - 1];
 
-        // 2. Separate Buckets
-        const doneTasks = tasks.filter(t => DONE_STATUSES.includes(t.status));
-        const approvedTasks = tasks.filter(t => APPROVED_STATUSES.includes(t.status));
-        
-        // Active Tasks are those that are NOT Done and NOT Approved
-        const activeTasks = tasks.filter(t => 
-            !DONE_STATUSES.includes(t.status) && 
-            !APPROVED_STATUSES.includes(t.status)
+            if (!relevantDate || !finalStatus) return [];
+
+            const unitDate = startOfDay(parseISO(relevantDate));
+            if (selectedDate && !isSameDay(unitDate, selectedDate)) return [];
+
+            return [{ task, status: task.status, date: unitDate, finalStatus, tab }];
+        }));
+
+        const total = units.length || 0;
+
+        const completedUnits = units.filter(unit =>
+            isAtOrAfterStatus(unit.status, unit.finalStatus, statusOptions)
+        );
+        const progressUnits = progressStatus
+            ? units.filter(unit =>
+                unit.tab.statuses.some(status => isStatus(status, progressStatus)) &&
+                isAtOrAfterStatus(unit.status, progressStatus, statusOptions)
+            )
+            : [];
+        const activeUnits = units.filter(unit =>
+            !isAtOrAfterStatus(unit.status, unit.finalStatus, statusOptions)
         );
 
-        // 3. Calculate Buckets
-        const overdueTasks = activeTasks.filter(t => {
-            if (!t.dueDate) return false;
-            // Strictly before Today (e.g. Yesterday or older)
-            return isBefore(startOfDay(parseISO(t.dueDate)), today);
-        });
+        const overdueTasks = activeUnits.filter(unit => isBefore(unit.date, today));
 
-        const pendingTasks = activeTasks.filter(t => {
-            if (!t.dueDate) return true; // No date = Pending
-            // Today OR Future (Pending = Total Active - Overdue)
-            return !isBefore(startOfDay(parseISO(t.dueDate)), today);
-        });
-
-        // *Optional*: Count Today specific tasks just for the orange card
-        const todayTasks = activeTasks.filter(t => t.dueDate && isSameDay(parseISO(t.dueDate), today));
+        const pendingTasks = activeUnits.filter(unit => !isBefore(unit.date, today));
 
         // 4. Return Cards
-        return [
+        const cards: StatCard[] = [
             {
                 label: "Total Tasks",
                 value: total,
                 percent: 100,
-                color: "bg-slate-50 text-slate-700 border-slate-200"
+                className: "bg-slate-50 text-slate-700 border-slate-200"
             },
-            {
-                label: "Done",
-                value: doneTasks.length,
-                percent: total ? Math.round((doneTasks.length / total) * 100) : 0,
-                color: "bg-emerald-50 text-emerald-700 border-emerald-200"
-            },
+        ];
+
+        if (progressStatus && progressLabel) {
+            cards.push({
+                label: progressLabel,
+                value: progressUnits.length,
+                percent: total ? Math.round((progressUnits.length / total) * 100) : 0,
+                style: paletteStyle(getStatusColor(progressStatus, statusOptions, isVideoEditor ? "#8b5cf6" : "#6366f1"))
+            });
+        }
+
+        cards.push(
             {
                 label: "Approved",
-                value: approvedTasks.length,
-                percent: total ? Math.round((approvedTasks.length / total) * 100) : 0,
-                color: "bg-blue-50 text-blue-700 border-blue-200"
+                value: completedUnits.length,
+                percent: total ? Math.round((completedUnits.length / total) * 100) : 0,
+                style: paletteStyle(getStatusColor("Approved", statusOptions, "#3b82f6"))
             },
             {
                 label: "Pending", // Includes Today + Future
                 value: pendingTasks.length,
                 percent: total ? Math.round((pendingTasks.length / total) * 100) : 0,
-                color: "bg-yellow-50 text-yellow-700 border-yellow-200"
+                style: paletteStyle(getStatusColor("Pending", statusOptions, "#f59e0b"))
             },
             // {
             //     label: "Today", // Just a highlight, part of Pending
@@ -82,16 +109,22 @@ export function TaskStats({ tasks, statusOptions = [] }: TaskStatsProps) {
                 label: "Overdue",
                 value: overdueTasks.length, // Should be 1
                 percent: total ? Math.round((overdueTasks.length / total) * 100) : 0,
-                color: "bg-red-50 text-red-700 border-red-200"
+                style: paletteStyle(OVERDUE_COLOR)
             },
 
-        ];
-    }, [tasks]);
+        );
+
+        return cards;
+    }, [tasks, roleLabel, statusOptions, dateRange, tabs]);
 
     return (
         <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-5 gap-3 w-full">
             {stats.map((stat, i) => (
-                <div key={i} className={cn("p-3 rounded-xl border flex justify-between h-20 shadow-sm", stat.color)}>
+                <div
+                    key={i}
+                    className={cn("p-3 rounded-xl border flex justify-between h-20 shadow-sm", stat.className)}
+                    style={stat.style}
+                >
                     <div className="flex flex-col justify-between items-start">
                         <span className="text-[10px] uppercase font-bold tracking-wider opacity-80">{stat.label}</span>
                         <span className="text-3xl font-black leading-none mt-1">{stat.value}</span>

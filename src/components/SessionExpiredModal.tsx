@@ -15,21 +15,14 @@ import Cookies from "js-cookie";
 
 export function SessionExpiredModal() {
     const [open, setOpen] = useState(false);
-    const [content, setContent] = useState({
-        title: "Session Expired",
-        message: "Your security session has timed out for your safety. Please sign in again to continue your work."
-    });
 
     useEffect(() => {
-        const handleSessionExpired = (e: any) => {
-            if (e.detail) {
-                setContent(e.detail);
-            }
+        const handleSessionExpired = () => {
             setOpen(true);
         };
 
-        window.addEventListener("session-expired" as any, handleSessionExpired);
-        return () => window.removeEventListener("session-expired" as any, handleSessionExpired);
+        window.addEventListener("session-expired", handleSessionExpired);
+        return () => window.removeEventListener("session-expired", handleSessionExpired);
     }, []);
 
     const handleLoginAgain = () => {
@@ -53,9 +46,9 @@ export function SessionExpiredModal() {
                     <div className="mx-auto w-12 h-12 rounded-full bg-amber-50 flex items-center justify-center mb-4">
                         <AlertCircle className="w-6 h-6 text-amber-600" />
                     </div>
-                    <DialogTitle className="text-center text-xl font-bold">{content.title}</DialogTitle>
+                    <DialogTitle className="text-center text-xl font-bold">Session Expired</DialogTitle>
                     <DialogDescription className="text-center pt-2">
-                        {content.message}
+                        Your security session has timed out for your safety. Please sign in again to continue your work.
                     </DialogDescription>
                 </DialogHeader>
                 <DialogFooter className="sm:justify-center mt-4">

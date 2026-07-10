@@ -33,7 +33,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     // ⚡ REHYDRATION LOGIC
     useEffect(() => {
         const checkAuth = () => {
-            const storedToken = Cookies.get("token") || localStorage.getItem("token");
+            const storedToken = Cookies.get("token");
             const storedUser = localStorage.getItem("kriyona_user");
 
             if (storedToken) {
@@ -59,19 +59,14 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }, [dispatch]);
 
     const login = (newToken: string, newUser: User) => {
-        try {
-            // 1. Update Cookies / LocalStorage
-            Cookies.set("token", newToken, { expires: 7, path: "/" });
-            localStorage.setItem("token", newToken);
-            localStorage.setItem("kriyona_user", JSON.stringify(newUser));
+        // 1. Update Cookies / LocalStorage
+        Cookies.set("token", newToken, { expires: 7 });
+        localStorage.setItem("token", newToken);
+        localStorage.setItem("kriyona_user", JSON.stringify(newUser));
 
-            // 2. Update Redux
-            dispatch(restoreSession(newUser));
-            
-            setToken(newToken);
-        } catch (err) {
-            console.error("❌ AuthContext: Login Error", err);
-        }
+        // 2. Update Redux
+        dispatch(restoreSession(newUser));
+        setToken(newToken);
     };
 
     const logout = () => {
@@ -79,6 +74,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         Cookies.remove("token");
         localStorage.removeItem("token");
         localStorage.removeItem("kriyona_user");
+        localStorage.removeItem("active_company_id");
 
         // 2. Clear Redux
         dispatch(restoreSession(null));

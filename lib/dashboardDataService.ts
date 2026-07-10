@@ -8,6 +8,7 @@ export interface FinancialStats {
         expense: number;
         outstanding: number;
         totalAvailableFunds: number;
+        totalOutstanding: number;
     };
 }
 
@@ -25,6 +26,7 @@ export interface TaskStats {
     }[];
     todayTasks: any[];
     allTeamTasks: any[];
+    allAdminTasks: any[];
     teamWorkload: {
         name: string;
         role: string;
@@ -48,6 +50,7 @@ export interface UserStats {
 
 export const getFinancialStats = async (): Promise<FinancialStats> => {
     const response = await api.get("/dashboard/stats/financials");
+    console.log(response.data);
     return response.data;
 };
 

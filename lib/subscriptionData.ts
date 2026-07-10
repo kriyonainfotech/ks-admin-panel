@@ -41,4 +41,6 @@ export interface UpdateSubscriptionPayload {
     id: string;
     packageName?: string;
     deliverables?: DeliverableItem[];
+    startDate?: string;
+    endDate?: string;
 }

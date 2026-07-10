@@ -30,12 +30,16 @@ interface AuthState {
     user: User | null;
     isAuthenticated: boolean;
     isLoading: boolean;
+    activeCompanyId: string | null;
+    activeCompany: { _id: string; name: string } | null;
 }
 
 const initialState: AuthState = {
     user: null,
     isAuthenticated: false,
     isLoading: true,
+    activeCompanyId: null,
+    activeCompany: null,
 };
 
 const authSlice = createSlice({
@@ -70,6 +74,13 @@ const authSlice = createSlice({
                 state.isAuthenticated = false;
             }
             state.isLoading = false;
+        },
+        setActiveCompany: (state, action: PayloadAction<{ _id: string; name: string } | null>) => {
+            state.activeCompany = action.payload;
+            state.activeCompanyId = action.payload?._id || null;
+            if (action.payload) {
+                localStorage.setItem("active_company_id", action.payload._id);
+            }
         }
     },
     extraReducers: (builder) => {
@@ -106,5 +117,5 @@ const authSlice = createSlice({
     },
 });
 
-export const { login, logout, setLoading, restoreSession } = authSlice.actions;
+export const { login, logout, setLoading, restoreSession, setActiveCompany } = authSlice.actions;
 export default authSlice.reducer;

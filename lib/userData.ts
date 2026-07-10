@@ -26,6 +26,13 @@ export interface User {
     joinedDate: string;
     role: "Superadmin" | "Admin" | "Team" | "Client";
     permissions: string[];
+    customPermissions?: string[];
+
+    // Multi-Company
+    company?: string | { _id: string; name: string };
+    accessibleCompanies?: { _id: string; name: string }[];
+    activeCompany?: string;
+    activeCompanyName?: string;
 
     // Role-specific Profiles
     profile?: any;

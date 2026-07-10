@@ -27,8 +27,9 @@ export interface Client {
         instagramPassword?: string;
     };
 
-    // Assigned Team
+    // Assignments
     assignedTeamIds: string[];
+    assignedAdminId?: string | null;
 
     // Status from backend clientStatus
     status: "Active" | "Inactive" | "Onboarding";
@@ -42,6 +43,9 @@ export interface Client {
 
     // Subscriptions (Fetched from backend)
     subscriptions?: ClientSubscription[];
+    
+    // Indicates if the client has Chutak items (fetched from backend)
+    hasChutakItems?: boolean;
 }
 
 export interface ClientSubscription {

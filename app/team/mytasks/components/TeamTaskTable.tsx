@@ -27,6 +27,7 @@ import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
+import { FUTURE_PENDING_COLOR, getStatusColor, getStatusOption, hexToRgba, isAtOrAfterStatus, isStatus, OVERDUE_COLOR, TODAY_COLOR } from "./statusPalette";
 
 interface TeamTaskTableProps {
     data: any[];
@@ -46,7 +47,7 @@ const StatusToggle = ({
     onClick,
     disabled,
     icon: Icon,
-    activeColor,
+    color = "#16a34a",
     inactiveColor = "text-slate-300 hover:text-slate-400",
     label
 }: any) => (
@@ -58,10 +59,11 @@ const StatusToggle = ({
                     disabled={disabled}
                     className={cn(
                         "group relative flex items-center justify-center w-6 h-6 rounded-full transition-all duration-300",
-                        disabled ? "opacity-40 cursor-not-allowed" : "cursor-pointer hover:scale-110 active:scale-95",
+                        disabled && !active ? "opacity-40 cursor-not-allowed" : "cursor-pointer hover:scale-110 active:scale-95",
                         active
-                            ? "bg-green-600 shadow-green-300 shadow-md"
-                            : "bg-transparent hover:bg-green-50")}
+                            ? "shadow-md"
+                            : "bg-transparent")}
+                    style={active ? { backgroundColor: color, boxShadow: `0 8px 18px ${hexToRgba(color, 0.28)}` } : undefined}
                 >
                     {active ? (
                         <Check size={18} className="text-white transition-all duration-300" strokeWidth={3.5} />
@@ -69,6 +71,7 @@ const StatusToggle = ({
                         <Icon
                             size={18}
                             className={cn("transition-all duration-300", inactiveColor)}
+                            style={{ color }}
                             strokeWidth={2}
                         />
                     )}
@@ -175,9 +178,9 @@ export function TeamTaskTable({ data, onStatusChange, onView, statusOptions = []
         if (allowedStatuses && allowedStatuses.length > 0) {
             // Map the allowed string status names to the actual option objects
             return allowedStatuses.map(statusStr => {
-                const found = statusOptions?.find(opt => opt.value === statusStr || opt.label === statusStr);
+                const found = getStatusOption(statusStr, statusOptions);
                 // Return a stable object even if the full options haven't loaded yet
-                return found || { label: statusStr, value: statusStr, color: 'emerald', _id: statusStr };
+                return found || { label: statusStr, value: statusStr, color: getStatusColor(statusStr, statusOptions), _id: statusStr };
             });
         }
 
@@ -210,28 +213,14 @@ export function TeamTaskTable({ data, onStatusChange, onView, statusOptions = []
 
                 const currentStatus = row.original.status;
 
-                // MASTER ORDER FOR SEQUENTIAL TICKING
-                const STATUS_SEQUENCE = ["Edit", "Design", "Approved", "Done"];
-
-                const currentStatusIndex = STATUS_SEQUENCE.indexOf(currentStatus);
-                const thisColumnIndex = STATUS_SEQUENCE.indexOf(opt.value);
-
                 // A status is "checked" if:
                 // 1. It is the current status
-                // 2. OR it comes BEFORE the current status in the sequence
+                // 2. OR it comes BEFORE the current status in this tab's visible status order
                 // 3. SPECIAL RULE: Approved (Stage 2) does NOT tick Done/Report_Shared (Stage 3)
-                let isChecked = (currentStatus === opt.value);
+                let isChecked = isStatus(currentStatus, [opt.value, opt.label]);
 
-                if (currentStatusIndex !== -1 && thisColumnIndex !== -1) {
-                    if (currentStatusIndex >= thisColumnIndex) {
-                        isChecked = true;
-
-                        // Prevent "Approved" from checking Stage 3 (Done)
-                        const stage3Statuses = ["Done"];
-                        if (currentStatus === "Approved" && stage3Statuses.includes(opt.value)) {
-                            isChecked = false;
-                        }
-                    }
+                if (isAtOrAfterStatus(currentStatus, opt.value, statusOptions)) {
+                    isChecked = true;
                 }
 
                 // No fallback to broad isTaskDone logic to prevent inheritance
@@ -243,7 +232,7 @@ export function TeamTaskTable({ data, onStatusChange, onView, statusOptions = []
                             onClick={() => !isChecked && setConfirmAction({ id: row.original._id, status: opt.value, title: row.original.title })}
                             disabled={isChecked || isLoading}
                             icon={Circle}
-                            activeColor={`ring-${opt.color || 'slate'}-500 text-${opt.color || 'slate'}-600`}
+                            color="#16a34a"
                             label={`Mark as ${opt.label}`}
                         />
                     </div>
@@ -274,37 +263,55 @@ export function TeamTaskTable({ data, onStatusChange, onView, statusOptions = []
     });
 
 
-    const getRowColor = (task: any) => {
+    const getRowTone = (task: any) => {
         const { status, dueDate, postingDate } = task;
         const relevantDate = showPostingDate ? postingDate : dueDate;
 
         const today = startOfDay(new Date());
 
-        // 1. GREEN: Done
-        if (status === "Done") {
-            return "bg-emerald-50/50 hover:bg-emerald-50/80 border-l-4 border-l-emerald-500";
+        const finalStatus = visibleOptions[visibleOptions.length - 1]?.value;
+
+        if (finalStatus && isAtOrAfterStatus(status, finalStatus, statusOptions)) {
+            const color = "#16a34a";
+            return {
+                className: "border-l-4",
+                style: {
+                    backgroundColor: hexToRgba(color, 0.08),
+                    borderLeftColor: color,
+                },
+            };
         }
 
-        // 1.5 BLUE: Approved / Posted
-        if (["Approved", "Posted"].includes(status)) {
-            return "bg-blue-50/50 hover:bg-blue-50/80 border-l-4 border-l-blue-500";
-        }
-
-        if (!relevantDate) return "bg-white";
+        if (!relevantDate) return { className: "bg-white", style: undefined };
         const taskDate = startOfDay(new Date(relevantDate));
 
-        // 2. RED: Strictly Before Today (Overdue)
         if (isBefore(taskDate, today)) {
-            return "bg-red-50/50 hover:bg-red-50/80 border-l-4 border-l-red-500";
+            return {
+                className: "border-l-4",
+                style: {
+                    backgroundColor: hexToRgba(OVERDUE_COLOR, 0.08),
+                    borderLeftColor: OVERDUE_COLOR,
+                },
+            };
         }
 
-        // 3. ORANGE: Strictly Today
         if (isSameDay(taskDate, today)) {
-            return "bg-orange-50/50 hover:bg-orange-50/80 border-l-4 border-l-orange-500";
+            return {
+                className: "border-l-4",
+                style: {
+                    backgroundColor: hexToRgba(TODAY_COLOR, 0.1),
+                    borderLeftColor: TODAY_COLOR,
+                },
+            };
         }
 
-        // 4. YELLOW: Future (Default Pending)
-        return "bg-yellow-50/50 hover:bg-yellow-50/80 border-l-4 border-l-yellow-500";
+        return {
+            className: "border-l-4",
+            style: {
+                backgroundColor: hexToRgba(FUTURE_PENDING_COLOR, 0.1),
+                borderLeftColor: FUTURE_PENDING_COLOR,
+            },
+        };
     };
 
     return (
@@ -322,18 +329,22 @@ export function TeamTaskTable({ data, onStatusChange, onView, statusOptions = []
                     ))}
                 </thead>
                 <tbody className="divide-y divide-slate-100">
-                    {table.getRowModel().rows.map(row => (
-                        <tr
-                            key={row.id}
-                            className={cn("transition-all duration-200 ease-in-out", getRowColor(row.original))}
-                        >
-                            {row.getVisibleCells().map(cell => (
-                                <td key={cell.id} className="px-6 py-4 text-center first:text-left">
-                                    {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                                </td>
-                            ))}
-                        </tr>
-                    ))}
+                    {table.getRowModel().rows.map(row => {
+                        const rowTone = getRowTone(row.original);
+                        return (
+                            <tr
+                                key={row.id}
+                                className={cn("transition-all duration-200 ease-in-out hover:brightness-[0.99]", rowTone.className)}
+                                style={rowTone.style}
+                            >
+                                {row.getVisibleCells().map(cell => (
+                                    <td key={cell.id} className="px-6 py-4 text-center first:text-left">
+                                        {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                                    </td>
+                                ))}
+                            </tr>
+                        );
+                    })}
                 </tbody>
             </table>
 
@@ -371,10 +382,7 @@ export function TeamTaskTable({ data, onStatusChange, onView, statusOptions = []
                         <Button
                             onClick={handleConfirm}
                             disabled={isLoading}
-                            className={cn(
-                                confirmAction?.status === "Done" ? "bg-emerald-600 hover:bg-emerald-700" :
-                                    confirmAction?.status === "Approved" ? "bg-blue-600 hover:bg-blue-700" : ""
-                            )}
+                            style={{ backgroundColor: getStatusColor(confirmAction?.status, statusOptions, "#e60000") }}
                         >
                             {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                             Confirm {confirmAction?.status}

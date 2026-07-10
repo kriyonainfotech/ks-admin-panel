@@ -47,7 +47,7 @@ export function WalletCard({ data, isLoading }: WalletCardProps) {
                     {/* <span className="text-xs font-bold text-slate-900">₹{data.dailyRate.toLocaleString()}</span> */}
                 </div>
             </CardHeader>
-            <CardContent className="px-5 flex-1 flex flex-col justify-between gap-4">
+            <CardContent className="p-5 flex-1 flex flex-col justify-between gap-4">
                 {/* Earned Amount */}
                 <div className="flex flex-col">
                     <div className="flex items-baseline gap-1.5">
@@ -59,7 +59,7 @@ export function WalletCard({ data, isLoading }: WalletCardProps) {
                         </span>
                     </div>
                     <p className="text-[10px] font-medium text-slate-500 mt-2 flex items-center gap-1">
-                        {/* <TrendingUp className="h-3.5 w-3.5 text-emerald-500" /> */}
+                        <TrendingUp className="h-3.5 w-3.5 text-emerald-500" />
                         Target: <span className="font-bold text-slate-700">₹{data.baseSalary.toLocaleString()}</span> this month
                     </p>
                 </div>

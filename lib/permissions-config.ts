@@ -1,32 +1,30 @@
-export const MODULES = [
+export const PERMISSION_MODULES = [
     {
-        id: "catalog",
-        label: "Catalog Module",
-        icon: "Package", // Lucide icon name
-        permissions: [
-            { key: "catalog.view", label: "View Packages & Services", desc: "Can view product list and details" },
-            { key: "catalog.manage", label: "Manage Packages & Services", desc: "Create, edit, and archive services" },
-        ]
-    },
-    {
-        id: "clients",
-        label: "Clients (CRM)",
+        id: "users",
+        label: "Users & Teams",
         icon: "Users",
         permissions: [
-            { key: "client.view", label: "View Clients", desc: "Access client directory" },
-            { key: "client.create", label: "Onboard Clients", desc: "Add new clients to the system" },
-            { key: "client.edit", label: "Edit Client Data", desc: "Modify contact info and notes" },
-            { key: "client.assign_team", label: "Assign Team", desc: "Link staff to clients" },
+            { key: "admin.manage", label: "Manage Admins", desc: "Create and edit company-level admins" },
+            { key: "team.manage", label: "Manage Team", desc: "Recruit and manage staff members" },
+            { key: "client.manage", label: "Manage Clients", desc: "Onboard and manage client profiles" },
         ]
     },
     {
-        id: "subscriptions",
-        label: "Subscriptions",
-        icon: "CreditCard",
+        id: "attendance",
+        label: "Attendance",
+        icon: "Clock",
         permissions: [
-            { key: "subscription.view", label: "View Plans", desc: "See active client subscriptions" },
-            { key: "subscription.create", label: "Assign Packages", desc: "Create new active plans" },
-            { key: "subscription.manage", label: "Manage Billing", desc: "Renew or cancel plans" },
+            { key: "attendance.view", label: "View Attendance", desc: "Access daily presence logs" },
+            { key: "attendance.manage", label: "Edit Attendance", desc: "Correct logs and manage holidays" },
+        ]
+    },
+    {
+        id: "payroll",
+        label: "Payroll",
+        icon: "Wallet",
+        permissions: [
+            { key: "payroll.view", label: "View Payroll", desc: "See salary details and wallet stats" },
+            { key: "payroll.manage", label: "Process Payroll", desc: "Generate salaries and record payouts" },
         ]
     },
     {
@@ -34,9 +32,39 @@ export const MODULES = [
         label: "Task Management",
         icon: "CheckSquare",
         permissions: [
-            { key: "task.view", label: "View Own Tasks", desc: "See tasks assigned to me" },
-            { key: "task.view_all", label: "View All Tasks", desc: "Manager view of all production" },
-            { key: "task.create", label: "Create Tasks", desc: "Manually create new tasks" },
+            { key: "task.view", label: "View Own Tasks", desc: "Access personal task list" },
+            { key: "task.view_all", label: "View All Tasks", desc: "Company-wide production overview" },
+            { key: "task.manage", label: "Manage Tasks", desc: "Create, edit, and assign tasks" },
+        ]
+    },
+    {
+        id: "crm",
+        label: "Services & CRM",
+        icon: "Briefcase",
+        permissions: [
+            { key: "service.manage", label: "Manage Services", desc: "Create and edit service packages" },
+            { key: "lead.manage", label: "Manage Leads", desc: "Track and convert business leads" },
+            { key: "client.view", label: "View CRM", desc: "Access the client database" },
+        ]
+    },
+    {
+        id: "payments",
+        label: "Payments",
+        icon: "CreditCard",
+        permissions: [
+            { key: "payment.view", label: "View Payments", desc: "See sales and collection history" },
+            { key: "payment.manage", label: "Record Payments", desc: "Enter new sales or collections" },
+        ]
+    },
+    {
+        id: "workflow",
+        label: "Workflow",
+        icon: "Calendar",
+        permissions: [
+            { key: "schedule.view", label: "View Schedules", desc: "See project timelines" },
+            { key: "schedule.manage", label: "Manage Schedules", desc: "Create and edit project schedules" },
+            { key: "sop.view", label: "View SOPs", desc: "Read internal guidelines" },
+            { key: "sop.manage", label: "Manage SOPs", desc: "Create and edit SOP points" },
         ]
     },
     {
@@ -44,7 +72,9 @@ export const MODULES = [
         label: "System",
         icon: "Settings",
         permissions: [
-            { key: "access.manage", label: "Manage Access", desc: "Configure these role settings" },
+            { key: "notification.manage", label: "Send Notifications", desc: "Send bulk alerts to users" },
+            { key: "company.edit", label: "Edit Company", desc: "Update business profile details" },
+            { key: "access.control", label: "Access Control", desc: "Grant/revoke user permissions" },
         ]
     }
 ];

@@ -51,6 +51,30 @@ export const createChutakItem = createAsyncThunk(
     }
 );
 
+export const updateChutakItem = createAsyncThunk(
+    "schedule/updateChutak",
+    async ({ id, ...data }: { id: string; [key: string]: any }, { rejectWithValue }) => {
+        try {
+            const response = await axios.put(`${API_URL}/api/schedules/${id}`, data, { withCredentials: true });
+            return response.data.data;
+        } catch (error: any) {
+            return rejectWithValue(error.response?.data?.message || "Failed to update chutak item");
+        }
+    }
+);
+
+export const deleteChutakItem = createAsyncThunk(
+    "schedule/deleteChutak",
+    async (id: string, { rejectWithValue }) => {
+        try {
+            await axios.delete(`${API_URL}/api/schedules/${id}`, { withCredentials: true });
+            return id;
+        } catch (error: any) {
+            return rejectWithValue(error.response?.data?.message || "Failed to delete chutak item");
+        }
+    }
+);
+
 export const fetchChutakItemsByClient = createAsyncThunk(
     "schedule/fetchChutakByClient",
     async ({ clientId, startDate, endDate }: { clientId: string, startDate?: string, endDate?: string }, { rejectWithValue }) => {
@@ -127,7 +151,7 @@ const scheduleSlice = createSlice({
                 state.summary = action.payload;
             })
             .addCase(createChutakItem.fulfilled, (state, action) => {
-                state.items = [...state.items, action.payload.data];
+                state.items = [...state.items, action.payload];
             })
             .addCase(fetchChutakItemsByClient.pending, (state) => {
                 state.isLoading = true;
@@ -139,6 +163,15 @@ const scheduleSlice = createSlice({
             .addCase(fetchChutakItemsByClient.rejected, (state, action) => {
                 state.isLoading = false;
                 state.error = action.payload as string;
+            })
+            .addCase(updateChutakItem.fulfilled, (state, action) => {
+                const index = state.items.findIndex(item => item._id === action.payload._id);
+                if (index !== -1) {
+                    state.items[index] = action.payload;
+                }
+            })
+            .addCase(deleteChutakItem.fulfilled, (state, action) => {
+                state.items = state.items.filter(item => item._id !== action.payload);
             });
     },
 });

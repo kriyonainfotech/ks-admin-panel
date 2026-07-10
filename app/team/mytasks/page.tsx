@@ -16,6 +16,7 @@ import { Dialog, DialogContent, DialogHeader } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ROLE_CONFIG } from "@/lib/role-configuration";
+import { getStatusColor, paletteStyle } from "./components/statusPalette";
 
 export default function TeamTasksPage() {
     const { user } = useAuth();
@@ -23,7 +24,7 @@ export default function TeamTasksPage() {
 
     const { tasks, isLoading: tasksLoading } = useAppSelector(state => state.tasks);
     const { clients } = useAppSelector(state => state.clients);
-    const { currentSet: statusSet } = useAppSelector(state => state.optionSet);
+    const { currentSet: fetchedStatusSet, optionSets } = useAppSelector(state => state.optionSet);
 
     // Default to Today for better UX
     const [dateRange, setDateRange] = useState<DateRange | undefined>({
@@ -32,27 +33,31 @@ export default function TeamTasksPage() {
     });
     const [viewTask, setViewTask] = useState<any | null>(null);
 
-    // Determine Role Variant
-    const roleVariant = useMemo(() => {
+    // Determine Role Variant from Config Matchers
+    const roleConfig = useMemo(() => {
         const spec = (user?.profile?.specialization || user?.specialization || "").toLowerCase().trim();
-        if (spec.includes("design") || spec.includes("graphic") || spec.includes("art")) return "design";
-        if (spec.includes("video") || spec.includes("edit")) return "video";
-        if (spec.includes("marketing") || spec.includes("market")) return "marketing";
-        if (spec.includes("web") || spec.includes("dev") || spec.includes("software")) return "web";
-        return "default";
+        const found = Object.values(ROLE_CONFIG).find(config => config.matcher(spec));
+        return found || ROLE_CONFIG.default;
     }, [user]);
 
-    // Get Config
-    const roleConfig = ROLE_CONFIG[roleVariant] || ROLE_CONFIG['default'];
     const dashboardConfig = roleConfig.dashboard;
-    const [activeTab, setActiveTab] = useState<string>(dashboardConfig.tabs[0]?.id || "design");
+    const [activeTab, setActiveTab] = useState<string>(dashboardConfig.tabs[0]?.id || "");
+    const statusSetNames = useMemo(() => {
+        const label = roleConfig.label.toLowerCase();
+        if (label.includes("video")) return ["task_status_video"];
+        if (label.includes("design") || label.includes("graphic")) return ["task_status_design"];
+        if (label.includes("web") || label.includes("developer")) {
+            return ["tasks_web_developer", "team_tasks_web_developer", "task_status_web", "task_status"];
+        }
+        return ["task_status"];
+    }, [roleConfig.label]);
 
     // Update active tab if role changes
     useEffect(() => {
         if (dashboardConfig.tabs.length > 0) {
             setActiveTab(dashboardConfig.tabs[0].id);
         }
-    }, [roleVariant]);
+    }, [dashboardConfig]);
 
     // Initial Data Fetch
     useEffect(() => {
@@ -61,45 +66,37 @@ export default function TeamTasksPage() {
             dispatch(fetchTasksByTeamMember(userId));
             dispatch(getClientsByTeamMember(userId));
 
-            const statusSetName = roleVariant !== "default" ? `task_status_${roleVariant}` : "task_status";
-            dispatch(fetchOptionSetByName(statusSetName));
+            statusSetNames.forEach((setName) => dispatch(fetchOptionSetByName(setName)));
         }
-    }, [dispatch, user, roleVariant]);
+    }, [dispatch, user, roleConfig, statusSetNames]);
 
+    const statusSet = statusSetNames
+        .map(setName => optionSets.find(set => set.name === setName)
+            || (fetchedStatusSet?.name === setName ? fetchedStatusSet : null))
+        .find(Boolean);
     const statusOptions = statusSet?.options || [];
 
     // --- HELPER: Filter Tasks by Date & Config ---
     const getTasksForTab = (tabConfig: any) => {
         if (!dateRange?.from) return tasks;
-
         const selectedDate = startOfDay(dateRange.from);
 
         return tasks.filter(task => {
-            // 1. Filter by Task Category if defined
-            if (tabConfig.filterCategory && task.taskCategory !== tabConfig.filterCategory) {
-                return false;
-            }
+            // 1. Filter by Task Category
+            if (tabConfig.filterCategory && task.taskCategory !== tabConfig.filterCategory) return false;
 
-            // 2. Filter by Posting Date rules:
-            // If tab expects posting dates, ONLY show tasks WITH posting dates
-            if (tabConfig.showPostingDate && !task.postingDate) return false;
-            // Only for tabs that explicitly flag it (e.g. Marketing Ads): exclude tasks that have a postingDate
-            if (tabConfig.excludeTasksWithPostingDate && task.postingDate) return false;
+            // 2. Filter by Mode (Config-Driven)
+            const mode = tabConfig.filterMode || 'DEFAULT';
+            if (mode === 'POSTING_ONLY' && !task.postingDate) return false;
+            if (mode === 'EXCLUDE_POSTING' && task.postingDate) return false;
 
-            const relevantDateStr = tabConfig.showPostingDate ? task.postingDate : task.dueDate;
+            // 3. Determine Date for Comparison
+            const relevantDateStr = mode === 'POSTING_ONLY' ? task.postingDate : task.dueDate;
             if (!relevantDateStr) return false;
 
-            const taskDate = startOfDay(parseISO(relevantDateStr));
-            // Always show tasks on their specific selected date
-            if (isSameDay(taskDate, selectedDate)) return true;
-
-            return false;
+            return isSameDay(startOfDay(parseISO(relevantDateStr)), selectedDate);
         });
     };
-
-    // Prepare data for the currently ACTIVE tab to show in stats
-    const activeTabConfig = dashboardConfig.tabs.find(t => t.id === activeTab) || dashboardConfig.tabs[0];
-    const activeTabTasks = getTasksForTab(activeTabConfig);
 
     return (
         <div className="min-h-screen bg-white font-sans space-y-8 pb-20">
@@ -121,8 +118,11 @@ export default function TeamTasksPage() {
                 <div className="w-full xl:w-auto flex-1">
                     {/* Sync stats with the active tab */}
                     <TaskStats
-                        tasks={activeTabTasks}
+                        tasks={tasks}
                         statusOptions={statusOptions}
+                        roleLabel={roleConfig.label}
+                        dateRange={dateRange}
+                        tabs={dashboardConfig.tabs}
                     />
                 </div>
             </div>
@@ -131,9 +131,10 @@ export default function TeamTasksPage() {
             <TeamTaskCalendar
                 date={dateRange}
                 setDate={setDateRange}
-                tasks={tasks}
-                statusOptions={statusOptions}
-            />
+            tasks={tasks}
+            statusOptions={statusOptions}
+            tabs={dashboardConfig.tabs}
+        />
 
             {/* DYNAMIC TABS */}
             <Tabs value={activeTab} className="w-full" onValueChange={(val) => setActiveTab(val)}>
@@ -168,7 +169,7 @@ export default function TeamTasksPage() {
                                 allowedStatuses={tab.statuses}
                                 clients={clients}
                                 isLoading={tasksLoading}
-                                showPostingDate={tab.showPostingDate}
+                                showPostingDate={tab.filterMode === 'POSTING_ONLY'}
                                 dateLabel={roleConfig.form.dueDateLabel}
                             />
                         </TabsContent>
@@ -225,7 +226,10 @@ export default function TeamTasksPage() {
                                 <span className="text-xs text-slate-400 uppercase font-bold tracking-widest">
                                     Status:
                                 </span>
-                                <span className="rounded-md text-sm text-slate-700 leading-relaxed">
+                                <span
+                                    className="rounded-md border px-2 py-0.5 text-sm font-semibold leading-relaxed"
+                                    style={paletteStyle(getStatusColor(viewTask?.status, statusOptions))}
+                                >
                                     {viewTask?.status}
                                 </span>
                             </div>

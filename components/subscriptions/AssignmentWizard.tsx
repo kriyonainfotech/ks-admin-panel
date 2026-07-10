@@ -2,11 +2,12 @@
 
 import { useState, useEffect, useMemo } from "react";
 import { format } from "date-fns";
-import { Loader2, CheckCircle2, Package, User, Plus, Users } from "lucide-react";
+import { Loader2, CheckCircle2, Package, User, Plus, Users, Check, ChevronsUpDown } from "lucide-react";
+import { cn } from "@/lib/utils";
 
 // Redux Imports
 import { useAppDispatch, useAppSelector } from "@/src/redux/hooks";
-import { assignPackageToClient, resetSubscriptionState } from "@/src/redux/slices/subscriptionSlice";
+import { assignPackageToClient, resetSubscriptionState, updateClientSubscription } from "@/src/redux/slices/subscriptionSlice";
 import { fetchInventory } from "@/src/redux/slices/packageSlice"; // To get templates
 import { fetchClients } from "@/src/redux/slices/clientSlice";   // To get clients
 import { fetchTeam } from "@/src/redux/slices/teamSlice";     // To get team members
@@ -31,6 +32,14 @@ import { Badge } from "@/components/ui/badge";
 // Component Imports
 import { DeliverableEditor } from "./DeliverableEditor";
 import { DeliverableItem } from "@/src/types/subscription";
+import {
+    Command,
+    CommandEmpty,
+    CommandGroup,
+    CommandInput,
+    CommandItem,
+    CommandList,
+} from "@/components/ui/command";
 
 interface AssignmentWizardProps {
     isOpen: boolean;
@@ -46,7 +55,7 @@ export function AssignmentWizard({ isOpen, onClose, initialClientId, initialData
     const { clients } = useAppSelector((state) => state.clients);
     const { packages: templates, services } = useAppSelector((state) => state.packages);
     const { members: teamMembers } = useAppSelector((state) => state.team);
-    const { isLoading, isSuccess } = useAppSelector((state) => state.subscription);
+    const { isLoading, isSuccess, isUpdating } = useAppSelector((state) => state.subscription);
 
     // -- Local State --
     const [step, setStep] = useState(1);
@@ -58,6 +67,7 @@ export function AssignmentWizard({ isOpen, onClose, initialClientId, initialData
     const [cartItems, setCartItems] = useState<DeliverableItem[]>([]);
     const [pkgName, setPkgName] = useState("");
     const [templateId, setTemplateId] = useState("");
+    const [clientPopoverOpen, setClientPopoverOpen] = useState(false);
 
     const totalPrice = useMemo(() => {
         return cartItems.reduce((acc, item) => acc + (item.basePrice * item.quantity), 0);
@@ -100,6 +110,7 @@ export function AssignmentWizard({ isOpen, onClose, initialClientId, initialData
                 if (initialClientId) setSelectedClientId(initialClientId);
                 
                 // Reset fields
+                setClientPopoverOpen(false);
                 setPkgName("");
                 setTemplateId("");
                 setCartItems([]);
@@ -112,12 +123,13 @@ export function AssignmentWizard({ isOpen, onClose, initialClientId, initialData
     // Close on Success
     useEffect(() => {
         if (isSuccess) {
+            dispatch(fetchClients()); // Refetch to sync main table
             setTimeout(() => {
                 onClose();
                 setStep(1);
             }, 1500);
         }
-    }, [isSuccess, onClose]);
+    }, [isSuccess, onClose, dispatch]);
 
     // -- Handlers --
 
@@ -160,17 +172,38 @@ export function AssignmentWizard({ isOpen, onClose, initialClientId, initialData
     // Step 4: Final Submit (Actually triggers API)
     const handleConfirm = () => {
         console.log("FINAL SUBMIT", { selectedClientId, startDate, pkgName, templateId, cartItems });
-        dispatch(assignPackageToClient({
-            clientId: selectedClientId,
-            startDate: startDate!.toISOString(),
-            endDate: endDate?.toISOString(),
-            billingCycle: "Monthly",
-            packageData: {
-                templateId: templateId || null,
-                name: pkgName,
-                items: cartItems
-            }
-        }));
+        
+        if (initialData?._id) {
+            // EDIT MODE
+            dispatch(updateClientSubscription({
+                id: initialData._id,
+                packageName: pkgName,
+                startDate: startDate?.toISOString(),
+                endDate: endDate?.toISOString(),
+                deliverables: cartItems.map(item => ({
+                    ...item,
+                    serviceName: item.name || item.serviceName,
+                    price: item.price ?? item.basePrice ?? item.unitPrice ?? 0
+                }))
+            }));
+        } else {
+            // CREATE MODE
+            dispatch(assignPackageToClient({
+                clientId: selectedClientId,
+                startDate: startDate!.toISOString(),
+                endDate: endDate?.toISOString(),
+                billingCycle: "Monthly",
+                packageData: {
+                    templateId: templateId || null,
+                    name: pkgName,
+                    items: cartItems.map(item => ({
+                        ...item,
+                        serviceName: item.name || item.serviceName,
+                        price: item.price ?? item.basePrice ?? item.unitPrice ?? 0
+                    }))
+                }
+            }));
+        }
     };
 
     // -- RENDER HELPERS --
@@ -183,12 +216,49 @@ export function AssignmentWizard({ isOpen, onClose, initialClientId, initialData
                     <p className="text-sm text-blue-600/80">Who is this package for?</p>
                 </div>
             </div>
-            <Select value={selectedClientId} onValueChange={setSelectedClientId}>
-                <SelectTrigger><SelectValue placeholder="Search client..." /></SelectTrigger>
-                <SelectContent>
-                    {clients.map(c => <SelectItem key={c.id} value={c.id}>{c.businessName}</SelectItem>)}
-                </SelectContent>
-            </Select>
+            <Popover open={clientPopoverOpen} onOpenChange={setClientPopoverOpen}>
+                <PopoverTrigger asChild>
+                    <Button
+                        variant="outline"
+                        role="combobox"
+                        aria-expanded={clientPopoverOpen}
+                        className="w-full justify-between"
+                    >
+                        {selectedClientId
+                            ? clients.find((c) => c.id === selectedClientId)?.businessName
+                            : "Select client..."}
+                        <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                    </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-full p-0" align="start">
+                    <Command>
+                        <CommandInput placeholder="Search client..." />
+                        <CommandList>
+                            <CommandEmpty>No client found.</CommandEmpty>
+                            <CommandGroup heading="Clients">
+                                {clients.map((c) => (
+                                    <CommandItem
+                                        key={c.id}
+                                        value={c.businessName}
+                                        onSelect={() => {
+                                            setSelectedClientId(c.id);
+                                            setClientPopoverOpen(false);
+                                        }}
+                                    >
+                                        <Check
+                                            className={cn(
+                                                "mr-2 h-4 w-4",
+                                                selectedClientId === c.id ? "opacity-100" : "opacity-0"
+                                            )}
+                                        />
+                                        {c.businessName}
+                                    </CommandItem>
+                                ))}
+                            </CommandGroup>
+                        </CommandList>
+                    </Command>
+                </PopoverContent>
+            </Popover>
         </div>
     );
 
@@ -357,12 +427,14 @@ export function AssignmentWizard({ isOpen, onClose, initialClientId, initialData
                     <Users className="text-primary" />
                     <div>
                         <h4 className="font-semibold text-md text-primary">Assign Team Members</h4>
-                        <p className="text-xs text-primary/80">Assign specific tasks to Assigned team of {selectedClient?.businessName}</p>
+                        <p className="text-xs text-primary/80">Assign specific tasks to team members for {selectedClient?.businessName}</p>
                     </div>
                 </div>
 
                 {cartItems.map((item, index) => {
-                    const clientAvailableMembers = teamMembers.filter(m => allowedIds.includes(m._id));
+                    const clientAvailableMembers = teamMembers
+                        .filter(m => m.isActive && allowedIds.includes(m._id))
+                        .sort((a, b) => a.name.localeCompare(b.name));
 
                     return (
                         <Card key={index} className="p-4 flex flex-col sm:flex-row gap-4 items-center justify-between">
@@ -440,8 +512,8 @@ export function AssignmentWizard({ isOpen, onClose, initialClientId, initialData
                             )}
 
                             {step === 4 && (
-                                <Button onClick={handleConfirm} disabled={isLoading}>
-                                    {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                                <Button onClick={handleConfirm} disabled={isLoading || isUpdating}>
+                                    {(isLoading || isUpdating) ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
                                     Confirm & Assign Package
                                 </Button>
                             )}

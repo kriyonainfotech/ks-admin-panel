@@ -15,6 +15,15 @@ api.interceptors.request.use(
         if (token) {
             config.headers.Authorization = `Bearer ${token}`;
         }
+        
+        // Multi-Company Support: Attach active company context
+        if (typeof window !== 'undefined') {
+            const activeCompanyId = localStorage.getItem("active_company_id");
+            if (activeCompanyId) {
+                config.headers["x-company-id"] = activeCompanyId;
+            }
+        }
+        
         return config;
     },
     (error) => {

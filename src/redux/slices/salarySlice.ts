@@ -17,6 +17,7 @@ interface SalaryState {
         totalPayroll: number;
         accruedTillDate: number;
         disbursed: number;
+        workingDaysCount: number;
     } | null;
     payrollList: any[];
     attendanceLogs: any[];

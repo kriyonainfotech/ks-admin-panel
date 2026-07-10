@@ -24,15 +24,17 @@ import { Card, CardContent } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 import { DateRange } from "react-day-picker";
 import { OptionItem } from "@/src/services/optionSetService";
+import { FUTURE_PENDING_COLOR, isAtOrAfterStatus, OVERDUE_COLOR, TODAY_COLOR } from "./statusPalette";
 
 interface TeamTaskCalendarProps {
     date: DateRange | undefined;
     setDate: (date: DateRange | undefined) => void;
     tasks: any[];
     statusOptions?: OptionItem[];
+    tabs?: { statuses: string[]; filterMode?: 'POSTING_ONLY' | 'EXCLUDE_POSTING' | 'DEFAULT' }[];
 }
 
-export function TeamTaskCalendar({ date, setDate, tasks, statusOptions = [] }: TeamTaskCalendarProps) {
+export function TeamTaskCalendar({ date, setDate, tasks, statusOptions = [], tabs = [] }: TeamTaskCalendarProps) {
     const [currentMonth, setCurrentMonth] = useState(new Date());
 
     const monthStart = startOfMonth(currentMonth);
@@ -56,53 +58,52 @@ export function TeamTaskCalendar({ date, setDate, tasks, statusOptions = [] }: T
 
     // --- DOTS LOGIC ---
     const getDayStats = (day: Date) => {
-        let designCount = 0;
-        let postingCount = 0;
-        let overdueCount = 0;
+        const counts = new Map<string, { label: string; count: number; color: string }>();
 
         const today = startOfDay(new Date());
 
+        const addStat = (label: string, color: string) => {
+            const key = color === "#16a34a" ? "completed" : `${label}-${color}`;
+            const current = counts.get(key);
+            counts.set(key, {
+                label: key === "completed" ? "Completed" : label,
+                color,
+                count: (current?.count || 0) + 1,
+            });
+        };
+
+        const addUnitStat = (task: any, day: Date, finalStatus: string) => {
+            if (isAtOrAfterStatus(task.status, finalStatus, statusOptions)) {
+                addStat(finalStatus, "#16a34a");
+            } else if (isBefore(day, today)) {
+                addStat("Overdue", OVERDUE_COLOR);
+            } else if (isSameDay(day, today)) {
+                addStat("Pending", TODAY_COLOR);
+            } else {
+                addStat("Pending", FUTURE_PENDING_COLOR);
+            }
+        };
+
         tasks.forEach(task => {
-            // Stage Logic:
-            // 1. Initial Work (Stage 1): Ads_Done, Approved, Design, Edit, Done
-            // 2. Final Delivery (Stage 2): Report_Shared, Done
-            const isStage1Done = ["Ads_Done", "Report_Shared", "Approved", "Done"].includes(task.status);
-            const isStage2Done = ["Report_Shared", "Done"].includes(task.status);
+            const unitTabs = tabs.length > 0
+                ? tabs
+                : [
+                    { statuses: ["Approved"], filterMode: "DEFAULT" as const },
+                    { statuses: ["Done"], filterMode: "POSTING_ONLY" as const },
+                ];
 
-            // 1. CHECK TASK DATE (DUE DATE)
-            if (task.dueDate && isSameDay(parseISO(task.dueDate), day)) {
-                // For tasks with two dates, the first date represents Stage 1
-                // For single-date tasks, the only date represents the final delivery (Stage 2)
-                const isFinished = task.postingDate ? isStage1Done : isStage2Done;
+            unitTabs.forEach((tab) => {
+                const mode = tab.filterMode || "DEFAULT";
+                const relevantDate = mode === "POSTING_ONLY" ? task.postingDate : task.dueDate;
+                const finalStatus = tab.statuses[tab.statuses.length - 1];
 
-                if (isFinished) {
-                    postingCount++; // Green
-                } else if (isBefore(day, today)) {
-                    overdueCount++; // Red
-                } else {
-                    designCount++; // Yellow
+                if (relevantDate && finalStatus && isSameDay(parseISO(relevantDate), day)) {
+                    addUnitStat(task, day, finalStatus);
                 }
-            }
-
-            // 2. CHECK DELIVERY DATE (POSTING / REPORTING)
-            if (task.postingDate && isSameDay(parseISO(task.postingDate), day)) {
-                // The delivery date always follows Stage 2 completion
-                if (isStage2Done) {
-                    postingCount++; // Green
-                } else if (isBefore(day, today)) {
-                    overdueCount++; // Red
-                } else {
-                    designCount++; // Yellow
-                }
-            }
+            });
         });
 
-        const stats = [];
-        if (overdueCount > 0) stats.push({ label: "Overdue", count: overdueCount, color: "#ef4444" });
-        if (designCount > 0) stats.push({ label: "Design", count: designCount, color: "#f59e0b" }); // Orange
-        if (postingCount > 0) stats.push({ label: "Post", count: postingCount, color: "#10b981" }); // Emerald/Green
-
-        return stats;
+        return Array.from(counts.values());
     };
 
     const isSelected = (day: Date) => {

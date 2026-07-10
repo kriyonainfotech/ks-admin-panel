@@ -5,12 +5,13 @@ export interface DashboardTab {
     statuses: string[];
     filterStatus: string[];
     filterCategory?: string;
-    showPostingDate?: boolean;
-    excludeTasksWithPostingDate?: boolean;
+    // New simplified filter modes
+    filterMode?: 'POSTING_ONLY' | 'EXCLUDE_POSTING' | 'DEFAULT';
 }
 
 export interface RoleConfig {
     label: string;
+    matcher: (specialization: string) => boolean;
     dashboard: {
         tabs: DashboardTab[];
     };
@@ -24,6 +25,7 @@ export interface RoleConfig {
 export const ROLE_CONFIG: { [key: string]: RoleConfig } = {
     design: {
         label: "Graphic Designer",
+        matcher: (s) => /design|graphic|art/i.test(s),
         dashboard: {
             tabs: [
                 {
@@ -31,14 +33,14 @@ export const ROLE_CONFIG: { [key: string]: RoleConfig } = {
                     label: 'Content Design',
                     statuses: ['Design', 'Approved'],
                     filterStatus: ['Design', 'Approved', 'Pending'],
-                    showPostingDate: false
+                    filterMode: 'DEFAULT'
                 },
                 {
                     id: 'posting',
                     label: 'Posting',
                     statuses: ['Done'],
                     filterStatus: ['Done'],
-                    showPostingDate: true
+                    filterMode: 'POSTING_ONLY'
                 }
             ]
         },
@@ -50,6 +52,7 @@ export const ROLE_CONFIG: { [key: string]: RoleConfig } = {
     },
     video: {
         label: "Video Editor",
+        matcher: (s) => /video|edit/i.test(s),
         dashboard: {
             tabs: [
                 {
@@ -57,14 +60,14 @@ export const ROLE_CONFIG: { [key: string]: RoleConfig } = {
                     label: 'Video Editing',
                     statuses: ['Edit', 'Approved'],
                     filterStatus: ['Edit', 'Approved', 'Pending'],
-                    showPostingDate: false
+                    filterMode: 'DEFAULT'
                 },
                 {
                     id: 'posting',
                     label: 'Posting',
                     statuses: ['Done'],
                     filterStatus: ['Done'],
-                    showPostingDate: true
+                    filterMode: 'POSTING_ONLY'
                 }
             ]
         },
@@ -76,6 +79,7 @@ export const ROLE_CONFIG: { [key: string]: RoleConfig } = {
     },
     marketing: {
         label: "Marketing",
+        matcher: (s) => /marketing|market/i.test(s),
         dashboard: {
             tabs: [
                 {
@@ -83,15 +87,14 @@ export const ROLE_CONFIG: { [key: string]: RoleConfig } = {
                     label: 'Ads',
                     statuses: ['Done'],
                     filterStatus: ['Done', 'Pending'],
-                    showPostingDate: false,
-                    excludeTasksWithPostingDate: true
+                    filterMode: 'EXCLUDE_POSTING'
                 },
                 {
                     id: 'reports',
                     label: 'Report Share',
                     statuses: ['Done'],
                     filterStatus: ['Done', 'Pending'],
-                    showPostingDate: true
+                    filterMode: 'POSTING_ONLY'
                 }
             ]
         },
@@ -103,6 +106,7 @@ export const ROLE_CONFIG: { [key: string]: RoleConfig } = {
     },
     web: {
         label: "Web Developer",
+        matcher: (s) => /web|dev|software/i.test(s),
         dashboard: {
             tabs: [
                 {
@@ -110,14 +114,14 @@ export const ROLE_CONFIG: { [key: string]: RoleConfig } = {
                     label: 'Development',
                     statuses: ['Developing', 'Review', 'Bug Fix', 'Approved'],
                     filterStatus: ['Developing', 'Review', 'Bug Fix', 'Approved', 'Pending'],
-                    showPostingDate: false
+                    filterMode: 'DEFAULT'
                 },
                 {
                     id: 'deployment',
                     label: 'Live/Deployment',
                     statuses: ['Staging', 'Done'],
                     filterStatus: ['Staging', 'Done'],
-                    showPostingDate: true
+                    filterMode: 'POSTING_ONLY'
                 }
             ]
         },
@@ -128,10 +132,10 @@ export const ROLE_CONFIG: { [key: string]: RoleConfig } = {
         }
     },
 
-
     // Default fallback
     default: {
         label: "Team Member",
+        matcher: () => true,
         dashboard: {
             tabs: [
                 {
@@ -139,7 +143,7 @@ export const ROLE_CONFIG: { [key: string]: RoleConfig } = {
                     label: 'All Tasks',
                     statuses: [],
                     filterStatus: [],
-                    showPostingDate: false
+                    filterMode: 'DEFAULT'
                 }
             ]
         },

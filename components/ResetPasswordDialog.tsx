@@ -12,8 +12,8 @@ import {
     DialogHeader,
     DialogTitle,
 } from "@/components/ui/dialog";
-import { Lock } from "lucide-react";
-import { useEffect } from "react";
+import { Lock, Eye, EyeOff } from "lucide-react";
+import { useEffect, useState } from "react";
 
 interface ResetPasswordDialogProps {
     open: boolean;
@@ -41,6 +41,9 @@ export function ResetPasswordDialog({
         reset,
         formState: { errors },
     } = useForm();
+
+    const [showPassword, setShowPassword] = useState(false);
+    const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
     // Reset form when dialog closes
     useEffect(() => {
@@ -77,16 +80,26 @@ export function ResetPasswordDialog({
                     {/* New Password */}
                     <div className="grid gap-2">
                         <Label htmlFor="new-password">New Password</Label>
-                        <Input
-                            id="new-password"
-                            type="password"
-                            placeholder="••••••••"
-                            autoComplete="new-password"
-                            {...register("password", {
-                                required: "Password is required",
-                                minLength: { value: 6, message: "Must be at least 6 characters" }
-                            })}
-                        />
+                        <div className="relative">
+                            <Input
+                                id="new-password"
+                                type={showPassword ? "text" : "password"}
+                                // placeholder="••••••••"
+                                className="pr-10"
+                                autoComplete="new-password"
+                                {...register("password", {
+                                    required: "Password is required",
+                                    minLength: { value: 6, message: "Must be at least 6 characters" }
+                                })}
+                            />
+                            <button
+                                type="button"
+                                onClick={() => setShowPassword(!showPassword)}
+                                className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                            >
+                                {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                            </button>
+                        </div>
                         {errors.password && (
                             <span className="text-xs text-red-500">
                                 {errors.password.message as string}
@@ -97,20 +110,30 @@ export function ResetPasswordDialog({
                     {/* Confirm Password */}
                     <div className="grid gap-2">
                         <Label htmlFor="confirm-password">Confirm Password</Label>
-                        <Input
-                            id="confirm-password"
-                            type="password"
-                            placeholder="••••••••"
-                            autoComplete="new-password"
-                            {...register("confirmPassword", {
-                                required: "Please confirm the password",
-                                validate: (val: string) => {
-                                    if (watch("password") !== val) {
-                                        return "Passwords do not match";
-                                    }
-                                },
-                            })}
-                        />
+                        <div className="relative">
+                            <Input
+                                id="confirm-password"
+                                type={showConfirmPassword ? "text" : "password"}
+                                // placeholder="••••••••"
+                                className="pr-10"
+                                autoComplete="new-password"
+                                {...register("confirmPassword", {
+                                    required: "Please confirm the password",
+                                    validate: (val: string) => {
+                                        if (watch("password") !== val) {
+                                            return "Passwords do not match";
+                                        }
+                                    },
+                                })}
+                            />
+                            <button
+                                type="button"
+                                onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                                className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                            >
+                                {showConfirmPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                            </button>
+                        </div>
                         {errors.confirmPassword && (
                             <span className="text-xs text-red-500">
                                 {errors.confirmPassword.message as string}

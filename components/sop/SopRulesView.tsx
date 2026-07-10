@@ -42,25 +42,7 @@ export function SopRulesView({ title, category, entityType, entityId, teamCatego
     };
 
     return (
-        <div className="flex flex-col gap-6 w-full max-w-full p-4 md:p-6">
-            <div className="flex flex-col gap-2">
-                <div className="flex items-center gap-2 mb-1">
-                    {category === "sop" ? (
-                        <FileText className="size-6 text-primary" />
-                    ) : (
-                        <ShieldCheck className="size-6 text-primary" />
-                    )}
-                    <h1 className="text-2xl font-bold tracking-tight">{title}</h1>
-                </div>
-                <p className="text-muted-foreground text-sm">
-                    {category === "sop"
-                        ? "Standard Operating Procedures tailored for your role."
-                        : "Rules and Regulations to be followed within the studio."}
-                </p>
-            </div>
-
-            <Separator />
-
+        <div className="flex flex-col gap-6 max-w-full">
             {groupsLoading ? (
                 <div className="flex flex-col items-center justify-center py-20 gap-3 text-muted-foreground">
                     <Loader2 className="size-8 animate-spin" />

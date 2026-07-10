@@ -18,8 +18,8 @@ export const createTeamMember = createAsyncThunk(
     async (data: any, { rejectWithValue }) => {
         try {
             return await teamAPI.createTeamMember(data);
-        } catch (err: any) {
-            return rejectWithValue("Failed to create team member");
+        } catch (error: any) {
+            return rejectWithValue(error.response?.data?.message || "Failed to create team member");
         }
     }
 );

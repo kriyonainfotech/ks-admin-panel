@@ -23,6 +23,13 @@ export const adminAPI = {
         return res.data;
     },
 
+    createSuperAdmin: async (
+        adminData: any
+    ): Promise<SingleAdminResponse> => {
+        const res = await axiosInstance.post("/api/users/superadmin/create", adminData);
+        return res.data;
+    },
+
     // UPDATE ADMIN
     updateAdmin: async (
         id: string,
@@ -37,6 +44,7 @@ export const adminAPI = {
     deleteAdmin: async (id: string): Promise<DeleteAdminResponse> => {
         console.log(id, "THUNK PAYLOAD services");
         const res = await axiosInstance.delete("/api/users/admin/delete", { data: { id } });
+        console.log(res, "resss")
         return res.data;
     },
 
@@ -63,6 +71,18 @@ export const adminAPI = {
             password: password, // dynamic
         });
 
+        return res.data;
+    },
+
+    // UPDATE PERMISSIONS
+    updatePermissions: async (id: string, permissions: string[]): Promise<any> => {
+        const res = await axiosInstance.put(`/api/users/admin/permissions/${id}`, { permissions });
+        return res.data;
+    },
+
+    // GRANT CROSS-COMPANY ACCESS
+    grantCompanyAccess: async (id: string, companyId: string): Promise<any> => {
+        const res = await axiosInstance.put(`/api/users/admin/accessible-companies/${id}`, { companyId });
         return res.data;
     },
 

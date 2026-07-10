@@ -65,7 +65,7 @@ export interface Team {
     performance?: {
         daily: { total: number; done: number; percentage: number };
         monthly: { total: number; done: number; percentage: number };
-        attendance: { present: number; totalDays: number };
+        attendance: { present: number; fullDays: number; halfDays: number; leaves: number; totalDays: number };
     };
 }
 

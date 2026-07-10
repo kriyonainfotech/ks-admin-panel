@@ -94,6 +94,7 @@ const taskSlice = createSlice({
     name: "tasks",
     initialState,
     reducers: {
+        // Optional: If you want to clear tasks on logout
         clearTasks: (state) => {
             state.tasks = [];
         }
@@ -106,6 +107,7 @@ const taskSlice = createSlice({
                 state.isLoading = false;
                 state.tasks = action.payload.data;
                 state.total = action.payload.total;
+                // OVERWRITE calendar data so dots represent the CURRENT view (tab/filter)
                 state.calendarData = action.payload.calendarData;
                 state.monthCount = action.payload.monthCount;
             })
@@ -125,10 +127,11 @@ const taskSlice = createSlice({
                 state.error = action.payload as string;
             })
 
-            // Create
+            // Create — re-fetch after save so only correct date-range tasks show
             .addCase(createTask.pending, (state) => { state.isLoading = true; })
             .addCase(createTask.fulfilled, (state) => {
                 state.isLoading = false;
+                // Do NOT optimistically unshift — the task may belong to a different date than the current filter
             })
             .addCase(createTask.rejected, (state, action) => {
                 state.isLoading = false;
@@ -166,6 +169,7 @@ const taskSlice = createSlice({
             .addCase(deleteTask.pending, (state) => { state.isLoading = true; })
             .addCase(deleteTask.fulfilled, (state, action) => {
                 state.isLoading = false;
+                // Use _id (not id) — action.payload is the raw _id string from the API
                 state.tasks = state.tasks.filter(t => t._id !== action.payload && t.id !== action.payload);
             })
             .addCase(deleteTask.rejected, (state, action) => {
@@ -173,7 +177,7 @@ const taskSlice = createSlice({
                 state.error = action.payload as string;
             })
 
-            // Fetch Calendar Data only
+            // Fetch Calendar Data only (silent — does not affect task list or isLoading)
             .addCase(fetchCalendarData.fulfilled, (state, action) => {
                 state.calendarData = action.payload;
             });

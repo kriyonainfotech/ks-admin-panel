@@ -13,6 +13,16 @@ export const attendanceService = {
         return response.data;
     },
 
+    updateAttendanceAPI: async (id: string, data: { status?: string, startTime?: string, endTime?: string }): Promise<any> => {
+        const response = await apiConnector.put(`/api/attendance/${id}`, data);
+        return response.data;
+    },
+
+    deleteAttendanceAPI: async (id: string): Promise<any> => {
+        const response = await apiConnector.delete(`/api/attendance/${id}`);
+        return response.data;
+    },
+
     // 2. Get Status (Check if checked in today) - Keep for any team-side status check
     getAttendanceStatusAPI: async (): Promise<AttendanceStatusResponse> => {
         const response = await apiConnector.get(`/api/attendance/status`);

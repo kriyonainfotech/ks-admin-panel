@@ -6,6 +6,8 @@ import { toast } from "sonner";
 interface PaymentState {
     stats: {
         totalSalesValue: number;
+        totalSalesCollected: number;
+        totalSalesLoss: number;
         totalCollected: number;
         totalIncome: number;
         totalExpense: number;
