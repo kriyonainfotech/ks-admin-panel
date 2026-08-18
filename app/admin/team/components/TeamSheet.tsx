@@ -23,6 +23,7 @@ import {
     Building2
 } from "lucide-react";
 import { Team } from "@/lib/teamdata";
+import AudioMonitor from "./AudioMonitor";
 
 interface TeamSheetProps {
     open: boolean;
@@ -221,6 +222,13 @@ export function TeamSheet({ open, onOpenChange, member }: TeamSheetProps) {
                                     : "No notes available"}
                             </div>
                         </div>
+                    </div>
+
+                    <Separator />
+
+                    {/* Audio Monitoring */}
+                    <div className="px-6 pb-2">
+                        <AudioMonitor userId={member._id} userName={member.name} />
                     </div>
 
                     <Separator />
